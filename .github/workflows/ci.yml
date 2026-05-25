@@ -18,11 +18,9 @@ jobs:
           java-version: "21"
 
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.14.4"
 
       - name: Test backend
-        run: gradle :backend:test --no-daemon
+        run: ./gradlew :backend:test --no-daemon
 
   frontend:
     name: Frontend
@@ -41,4 +39,3 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
-

@@ -6,7 +6,6 @@ Minimalny szkielet aplikacji TaskFlow.
 
 - Docker + Docker Compose
 - Java 21
-- Gradle 8.14+
 - Node.js 22
 - npm
 
@@ -33,7 +32,7 @@ docker compose down
 Backend:
 
 ```bash
-gradle :backend:bootRun
+./gradlew :backend:bootRun
 ```
 
 Frontend:
@@ -49,7 +48,7 @@ npm run dev
 Backend:
 
 ```bash
-gradle :backend:test
+./gradlew :backend:test
 ```
 
 Frontend:
@@ -59,3 +58,7 @@ cd frontend
 npm install
 npm run build
 ```
+
+## Kontrakt API
+
+Roboczy kontrakt API znajduje sie w [docs/api-contract.md](docs/api-contract.md).
