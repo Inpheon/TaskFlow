@@ -1,7 +1,5 @@
 # TaskFlow
 
-Minimalny szkielet aplikacji TaskFlow.
-
 ## Wymagania
 
 - Docker + Docker Compose
