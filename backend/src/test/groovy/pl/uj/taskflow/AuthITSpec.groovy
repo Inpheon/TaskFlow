@@ -40,14 +40,13 @@ class AuthITSpec extends Specification {
 
     ObjectMapper objectMapper = new ObjectMapper()
 
-
     def cleanup() {
         userRepository.deleteAll()
     }
 
-    def "register creates user and stores encoded password"() {
+    def "register creates user, stores encoded password and returns usable session"() {
         when:
-        mockMvc.perform(post("/api/auth/register")
+        def response = mockMvc.perform(post("/api/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {
@@ -57,14 +56,26 @@ class AuthITSpec extends Specification {
                 }
             """))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath('$.id').exists())
-            .andExpect(jsonPath('$.email').value("demo@example.com"))
-            .andExpect(jsonPath('$.displayName').value("Demo User"))
+            .andExpect(jsonPath('$.accessToken').isNotEmpty())
+            .andExpect(jsonPath('$.tokenType').value("Bearer"))
+            .andExpect(jsonPath('$.user.id').exists())
+            .andExpect(jsonPath('$.user.email').value("demo@example.com"))
+            .andExpect(jsonPath('$.user.displayName').value("Demo User"))
+            .andReturn()
+            .response
+            .contentAsString
 
         then:
         def user = userRepository.findByEmail("demo@example.com").orElseThrow()
         user.passwordHash != "demo1234"
         passwordEncoder.matches("demo1234", user.passwordHash)
+
+        and:
+        def token = objectMapper.readTree(response).get("accessToken").asText()
+        mockMvc.perform(get("/api/auth/me")
+            .header("Authorization", "Bearer ${token}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath('$.email').value("demo@example.com"))
     }
 
     def "register rejects invalid payload"() {
@@ -116,6 +127,8 @@ class AuthITSpec extends Specification {
             .andExpect(status().isOk())
             .andExpect(jsonPath('$.tokenType').value("Bearer"))
             .andExpect(jsonPath('$.accessToken').isNotEmpty())
+            .andExpect(jsonPath('$.user.email').value("demo@example.com"))
+            .andExpect(jsonPath('$.user.displayName').value("Demo User"))
     }
 
     def "login rejects invalid credentials"() {
