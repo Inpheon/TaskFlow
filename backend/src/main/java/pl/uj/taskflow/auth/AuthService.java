@@ -22,7 +22,7 @@ public class AuthService {
     }
 
     @Transactional
-    public CurrentUserResponse register(RegisterRequest request) {
+    public AuthSessionResponse register(RegisterRequest request) {
         String email = normalizeEmail(request.email());
         if (userRepository.existsByEmail(email)) {
             throw new DuplicateEmailException(email);
@@ -34,17 +34,17 @@ public class AuthService {
             request.displayName().trim()
         ));
 
-        return CurrentUserResponse.from(user);
+        return session(user);
     }
 
     @Transactional(readOnly = true)
-    public AuthTokenResponse login(LoginRequest request) {
+    public AuthSessionResponse login(LoginRequest request) {
         String email = normalizeEmail(request.email());
         User user = userRepository.findByEmail(email)
             .filter(found -> passwordEncoder.matches(request.password(), found.getPasswordHash()))
             .orElseThrow(InvalidCredentialsException::new);
 
-        return new AuthTokenResponse(jwtService.createToken(user), "Bearer");
+        return session(user);
     }
 
     @Transactional(readOnly = true)
@@ -56,5 +56,9 @@ public class AuthService {
 
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase();
+    }
+
+    private AuthSessionResponse session(User user) {
+        return AuthSessionResponse.bearer(jwtService.createToken(user), CurrentUserResponse.from(user));
     }
 }
