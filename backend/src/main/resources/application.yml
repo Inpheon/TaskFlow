@@ -23,5 +23,5 @@ management:
 
 taskflow:
   jwt:
-    secret: ${TASKFLOW_JWT_SECRET:change-me}
-
+    secret: ${TASKFLOW_JWT_SECRET:change-me-in-local-development-only}
+    expiration: ${TASKFLOW_JWT_EXPIRATION:PT2H}

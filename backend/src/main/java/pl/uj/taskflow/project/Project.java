@@ -53,7 +53,7 @@ public class Project {
         if (id == null) {
             id = UUID.randomUUID();
         }
-        var now = Instant.now();
+        Instant now = Instant.now();
         if (createdAt == null) {
             createdAt = now;
         }
