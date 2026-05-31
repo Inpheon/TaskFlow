@@ -3,7 +3,7 @@
 DOKUMENT ROBOCZY - bedzie ewoluowal razem z implementacja.
 Szczegoly requestow, response'ow i walidacji moga sie zmieniac w trakcie pracy nad projektem.
 
-Dokument opisuje API które jest jeszcze nie zaimplementowane, źródłem prawdy do gotowych API jest swagger-ui, można go wykorzystać do testowania aktualnie działających endpointów:
+Dokument opisuje planowany i implementowany kontrakt API. Zrodlem prawdy do gotowych endpointow jest swagger-ui, mozna go wykorzystac do testowania aktualnie dzialajacego API:
 
 ```text
 http://localhost:8080/swagger-ui/index.html
@@ -59,9 +59,13 @@ Response 201:
 
 ```json
 {
-  "id": "uuid",
-  "email": "demo@example.com",
-  "displayName": "Demo User"
+  "accessToken": "jwt",
+  "tokenType": "Bearer",
+  "user": {
+    "id": "uuid",
+    "email": "demo@example.com",
+    "displayName": "Demo User"
+  }
 }
 ```
 
@@ -81,7 +85,12 @@ Response 200:
 ```json
 {
   "accessToken": "jwt",
-  "tokenType": "Bearer"
+  "tokenType": "Bearer",
+  "user": {
+    "id": "uuid",
+    "email": "demo@example.com",
+    "displayName": "Demo User"
+  }
 }
 ```
 
@@ -98,6 +107,8 @@ Response 200:
 ```
 
 ## Projects
+
+Endpointy wymagaja autoryzacji. Uzytkownik widzi tylko swoje projekty. Brak projektu i projekt nalezacy do innego uzytkownika zwracaja 404.
 
 ### GET /api/projects
 
