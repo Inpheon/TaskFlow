@@ -1,16 +1,20 @@
 package pl.uj.taskflow.common;
 
+import java.time.Instant;
+
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import pl.uj.taskflow.auth.DuplicateEmailException;
 import pl.uj.taskflow.auth.InvalidCredentialsException;
 import pl.uj.taskflow.project.ProjectNotFoundException;
-
-import java.time.Instant;
+import pl.uj.taskflow.security.AuthenticatedUserNotFoundException;
+import pl.uj.taskflow.task.InvalidTaskPositionException;
+import pl.uj.taskflow.task.TaskNotFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -35,9 +39,38 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.UNAUTHORIZED, "Unauthorized", exception.getMessage(), request);
     }
 
+    @ExceptionHandler(AuthenticatedUserNotFoundException.class)
+    ResponseEntity<ApiError> handleAuthenticatedUserNotFound(
+        AuthenticatedUserNotFoundException exception,
+        HttpServletRequest request
+    ) {
+        return error(HttpStatus.UNAUTHORIZED, "Unauthorized", exception.getMessage(), request);
+    }
+
     @ExceptionHandler(ProjectNotFoundException.class)
     ResponseEntity<ApiError> handleProjectNotFound(ProjectNotFoundException exception, HttpServletRequest request) {
         return error(HttpStatus.NOT_FOUND, "Not found", exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(TaskNotFoundException.class)
+    ResponseEntity<ApiError> handleTaskNotFound(TaskNotFoundException exception, HttpServletRequest request) {
+        return error(HttpStatus.NOT_FOUND, "Not found", exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidTaskPositionException.class)
+    ResponseEntity<ApiError> handleInvalidTaskPosition(
+        InvalidTaskPositionException exception,
+        HttpServletRequest request
+    ) {
+        return error(HttpStatus.BAD_REQUEST, "Validation error", exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ApiError> handleUnreadableMessage(
+        HttpMessageNotReadableException exception,
+        HttpServletRequest request
+    ) {
+        return error(HttpStatus.BAD_REQUEST, "Validation error", "Request body is invalid", request);
     }
 
     private ResponseEntity<ApiError> error(HttpStatus status, String error, String message, HttpServletRequest request) {

@@ -71,6 +71,32 @@ public class Task {
         this.position = position;
     }
 
+    public void updateDetails(String title, String description, TaskPriority priority, LocalDate dueDate) {
+        this.title = title;
+        this.description = description;
+        this.priority = priority;
+        this.dueDate = dueDate;
+        this.updatedAt = Instant.now();
+    }
+
+    public void move(TaskStatus status, int position) {
+        if (status == TaskStatus.DONE && this.status != TaskStatus.DONE) {
+            completedAt = Instant.now();
+        } else if (status != TaskStatus.DONE) {
+            completedAt = null;
+        }
+        this.status = status;
+        this.position = position;
+        this.updatedAt = Instant.now();
+    }
+
+    public void reposition(int position) {
+        if (this.position != position) {
+            this.position = position;
+            this.updatedAt = Instant.now();
+        }
+    }
+
     @PrePersist
     void prePersist() {
         if (id == null) {

@@ -4,6 +4,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.uj.taskflow.security.AuthenticatedUser;
+import pl.uj.taskflow.security.AuthenticatedUserNotFoundException;
 import pl.uj.taskflow.security.JwtService;
 import pl.uj.taskflow.user.User;
 import pl.uj.taskflow.user.UserRepository;
@@ -51,7 +52,7 @@ public class AuthService {
     public CurrentUserResponse currentUser(AuthenticatedUser user) {
         return userRepository.findById(user.id())
             .map(CurrentUserResponse::from)
-            .orElseThrow(InvalidCredentialsException::new);
+            .orElseThrow(AuthenticatedUserNotFoundException::new);
     }
 
     private String normalizeEmail(String email) {

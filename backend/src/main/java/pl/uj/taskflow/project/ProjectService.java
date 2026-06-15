@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.uj.taskflow.security.AuthenticatedUser;
+import pl.uj.taskflow.security.AuthenticatedUserNotFoundException;
 import pl.uj.taskflow.user.User;
 import pl.uj.taskflow.user.UserRepository;
 
@@ -30,7 +31,7 @@ public class ProjectService {
     @Transactional
     public ProjectResponse create(AuthenticatedUser user, ProjectRequest request) {
         User owner = userRepository.findById(user.id())
-            .orElseThrow(ProjectNotFoundException::new);
+            .orElseThrow(AuthenticatedUserNotFoundException::new);
         Project project = projectRepository.save(new Project(
             owner,
             normalizeRequired(request.name()),
