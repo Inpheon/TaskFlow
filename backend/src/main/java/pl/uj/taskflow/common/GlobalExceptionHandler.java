@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import pl.uj.taskflow.auth.DuplicateEmailException;
 import pl.uj.taskflow.auth.InvalidCredentialsException;
+import pl.uj.taskflow.project.ProjectNotFoundException;
 
 import java.time.Instant;
 
@@ -32,6 +33,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidCredentialsException.class)
     ResponseEntity<ApiError> handleInvalidCredentials(InvalidCredentialsException exception, HttpServletRequest request) {
         return error(HttpStatus.UNAUTHORIZED, "Unauthorized", exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(ProjectNotFoundException.class)
+    ResponseEntity<ApiError> handleProjectNotFound(ProjectNotFoundException exception, HttpServletRequest request) {
+        return error(HttpStatus.NOT_FOUND, "Not found", exception.getMessage(), request);
     }
 
     private ResponseEntity<ApiError> error(HttpStatus status, String error, String message, HttpServletRequest request) {

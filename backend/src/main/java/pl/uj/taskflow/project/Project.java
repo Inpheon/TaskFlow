@@ -48,6 +48,12 @@ public class Project {
         this.description = description;
     }
 
+    public void update(String name, String description) {
+        this.name = name;
+        this.description = description;
+        this.updatedAt = Instant.now();
+    }
+
     @PrePersist
     void prePersist() {
         if (id == null) {
