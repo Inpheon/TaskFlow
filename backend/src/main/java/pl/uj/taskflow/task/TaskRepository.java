@@ -12,6 +12,8 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
 
     List<Task> findAllByProjectIdAndStatusOrderByPositionAscCreatedAtAsc(UUID projectId, TaskStatus status);
 
+    List<Task> findAllByProjectOwnerId(UUID ownerId);
+
     long countByProjectIdAndStatus(UUID projectId, TaskStatus status);
 
     Optional<Task> findByIdAndProjectOwnerId(UUID id, UUID ownerId);
