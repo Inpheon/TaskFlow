@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import pl.uj.taskflow.auth.DuplicateEmailException;
 import pl.uj.taskflow.auth.InvalidCredentialsException;
+import pl.uj.taskflow.note.TaskNoteNotFoundException;
 import pl.uj.taskflow.project.ProjectNotFoundException;
 import pl.uj.taskflow.security.AuthenticatedUserNotFoundException;
 import pl.uj.taskflow.task.InvalidTaskPositionException;
@@ -54,6 +55,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(TaskNotFoundException.class)
     ResponseEntity<ApiError> handleTaskNotFound(TaskNotFoundException exception, HttpServletRequest request) {
+        return error(HttpStatus.NOT_FOUND, "Not found", exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(TaskNoteNotFoundException.class)
+    ResponseEntity<ApiError> handleTaskNoteNotFound(TaskNoteNotFoundException exception, HttpServletRequest request) {
         return error(HttpStatus.NOT_FOUND, "Not found", exception.getMessage(), request);
     }
 
