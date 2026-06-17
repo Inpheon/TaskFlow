@@ -192,14 +192,9 @@ Response 204.
 
 ## Tasks
 
+Endpointy wymagaja autoryzacji. Dostep do zadania wynika z dostepu do projektu. Brak zasobu i zasob nalezacy do innego uzytkownika zwracaja 404.
+
 ### GET /api/projects/{projectId}/tasks
-
-Optional query params:
-
-```text
-status=TODO
-priority=HIGH
-```
 
 Response 200:
 
@@ -222,6 +217,8 @@ Response 200:
 ```
 
 ### POST /api/projects/{projectId}/tasks
+
+Nowe zadanie otrzymuje status `TODO` i trafia na koniec kolumny. Brak priorytetu oznacza `MEDIUM`.
 
 Request:
 
@@ -274,6 +271,8 @@ Response 200:
 
 ### PUT /api/tasks/{taskId}
 
+Ten endpoint zmienia szczegoly zadania. Status i pozycja sa zmieniane tylko przez endpoint `move`.
+
 Request:
 
 ```json
@@ -305,7 +304,7 @@ Response 200:
 
 ### DELETE /api/tasks/{taskId}
 
-Response 204.
+Response 204. Pozycje pozostalych zadan w kolumnie sa porzadkowane od 0.
 
 ## Board i use-case endpoints
 
@@ -329,6 +328,10 @@ Response 200:
 
 ### PATCH /api/tasks/{taskId}/move
 
+`position` jest docelowym indeksem liczonym od 0. Przeniesienie miedzy kolumnami pozwala podac pozycje od 0 do aktualnego rozmiaru kolumny docelowej. Przeniesienie w tej samej kolumnie pozwala podac pozycje od 0 do ostatniego indeksu. Pozycje w obu kolumnach sa porzadkowane po operacji.
+
+Przeniesienie do `DONE` ustawia `completedAt`. Przeniesienie z `DONE` do innej kolumny czysci `completedAt`.
+
 Request:
 
 ```json
@@ -345,15 +348,22 @@ Response 200:
   "id": "uuid",
   "projectId": "uuid",
   "title": "Prepare ADR",
+  "description": "Write architecture decisions",
   "status": "IN_PROGRESS",
   "priority": "HIGH",
   "dueDate": "2026-05-30",
   "position": 1,
+  "createdAt": "2026-05-25T18:00:00Z",
+  "updatedAt": "2026-05-25T18:10:00Z",
   "completedAt": null
 }
 ```
 
 ### GET /api/projects/{projectId}/stats
+
+Endpoint wymaga autoryzacji i dostepu do projektu.
+
+`completionPercentage` jest zaokraglane do najblizszej liczby calkowitej. Dla pustego projektu wszystkie wartosci wynosza 0.
 
 Response 200:
 
@@ -369,6 +379,10 @@ Response 200:
 
 ### GET /api/dashboard/summary
 
+Endpoint wymaga autoryzacji i agreguje tylko projekty aktualnego uzytkownika.
+
+Zadanie jest otwarte, jezeli jego status nie jest rowny `DONE`. Zadanie jest zalegle, jezeli jest otwarte i `dueDate` jest wczesniejsze niz aktualna data UTC. Termin przypadajacy dzisiaj nie jest zalegly.
+
 Response 200:
 
 ```json
@@ -382,6 +396,10 @@ Response 200:
 ```
 
 ### GET /api/projects/{projectId}/report
+
+Endpoint wymaga autoryzacji i dostepu do projektu. `generatedAt` jest czasem UTC.
+
+Reguly dla procentu ukonczenia, zadan zaleglych i otwartych sa takie same jak w stats i dashboard.
 
 Response 200:
 
@@ -402,6 +420,16 @@ Response 200:
 
 ### GET /api/projects/{projectId}/suggested-next-task
 
+Endpoint wymaga autoryzacji i dostepu do projektu.
+
+Kandydatami sa tylko zadania ze statusem innym niz `DONE`. Kolejnosc wyboru:
+
+1. zadania zalegle,
+2. najwczesniejszy `dueDate`, zadania bez terminu na koncu,
+3. wyzszy priorytet,
+4. starsze `createdAt`,
+5. `id` jako deterministyczny tie-breaker.
+
 Response 200:
 
 ```json
@@ -413,9 +441,20 @@ Response 200:
     "priority": "HIGH",
     "dueDate": "2026-05-25"
   },
-  "reason": "High priority task with nearest due date"
+  "reason": "OVERDUE"
 }
 ```
+
+Mozliwe wartosci `reason`:
+
+```text
+OVERDUE
+NEAREST_DUE_DATE
+HIGH_PRIORITY
+OLDEST_OPEN_TASK
+```
+
+Response 204, jezeli projekt nie ma otwartych zadan.
 
 ## Notes
 
