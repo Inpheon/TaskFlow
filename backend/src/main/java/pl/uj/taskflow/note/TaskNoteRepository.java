@@ -1,6 +1,7 @@
 package pl.uj.taskflow.note;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,6 +9,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface TaskNoteRepository extends JpaRepository<TaskNote, UUID> {
 
     List<TaskNote> findAllByTaskIdOrderByCreatedAtAsc(UUID taskId);
+
+    Optional<TaskNote> findByIdAndTaskProjectOwnerId(UUID id, UUID ownerId);
 
     boolean existsByIdAndTaskProjectOwnerId(UUID id, UUID ownerId);
 }
