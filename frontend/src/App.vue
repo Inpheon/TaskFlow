@@ -1,18 +1,13 @@
-<template>
-  <div class="app-shell">
-    <header class="topbar">
-      <p class="eyebrow">TaskFlow</p>
-      <h1>Frontend skeleton</h1>
-    </header>
+<script setup lang="ts">
+import { RouterView, useRoute } from "vue-router";
+import AppShell from "@/components/AppShell.vue";
 
-    <main class="content" aria-label="Application skeleton">
-      <section class="panel">
-        <h2>Frontend is running</h2>
-        <p>
-          This placeholder will become the TaskFlow dashboard once the first
-          product slice lands.
-        </p>
-      </section>
-    </main>
-  </div>
+const route = useRoute();
+</script>
+
+<template>
+  <AppShell v-if="route.meta.requiresAuth">
+    <RouterView />
+  </AppShell>
+  <RouterView v-else />
 </template>
