@@ -1,5 +1,6 @@
 package pl.uj.taskflow.auth;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,6 +11,7 @@ import pl.uj.taskflow.user.User;
 import pl.uj.taskflow.user.UserRepository;
 
 @Service
+@Slf4j
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -34,6 +36,7 @@ public class AuthService {
             passwordEncoder.encode(request.password()),
             request.displayName().trim()
         ));
+        log.info("User registered: userId={}", user.getId());
 
         return session(user);
     }
@@ -44,6 +47,7 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
             .filter(found -> passwordEncoder.matches(request.password(), found.getPasswordHash()))
             .orElseThrow(InvalidCredentialsException::new);
+        log.info("User logged in: userId={}", user.getId());
 
         return session(user);
     }

@@ -3,6 +3,7 @@ package pl.uj.taskflow.project;
 import java.util.List;
 import java.util.UUID;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.uj.taskflow.security.AuthenticatedUser;
@@ -11,6 +12,7 @@ import pl.uj.taskflow.user.User;
 import pl.uj.taskflow.user.UserRepository;
 
 @Service
+@Slf4j
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
@@ -37,6 +39,7 @@ public class ProjectService {
             normalizeRequired(request.name()),
             normalizeOptional(request.description())
         ));
+        log.info("Project created: projectId={}, ownerId={}", project.getId(), user.id());
 
         return ProjectResponse.from(project);
     }
@@ -51,6 +54,7 @@ public class ProjectService {
     public ProjectResponse update(AuthenticatedUser user, UUID projectId, ProjectRequest request) {
         Project project = findOwnedProject(user, projectId);
         project.update(normalizeRequired(request.name()), normalizeOptional(request.description()));
+        log.info("Project updated: projectId={}, ownerId={}", projectId, user.id());
         return ProjectResponse.from(project);
     }
 
@@ -58,6 +62,7 @@ public class ProjectService {
     public void delete(AuthenticatedUser user, UUID projectId) {
         Project project = findOwnedProject(user, projectId);
         projectRepository.delete(project);
+        log.info("Project deleted: projectId={}, ownerId={}", projectId, user.id());
     }
 
     private Project findOwnedProject(AuthenticatedUser user, UUID projectId) {

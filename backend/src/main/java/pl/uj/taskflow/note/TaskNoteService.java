@@ -3,6 +3,7 @@ package pl.uj.taskflow.note;
 import java.util.List;
 import java.util.UUID;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.uj.taskflow.security.AuthenticatedUser;
@@ -14,6 +15,7 @@ import pl.uj.taskflow.user.User;
 import pl.uj.taskflow.user.UserRepository;
 
 @Service
+@Slf4j
 public class TaskNoteService {
 
     private final TaskNoteRepository taskNoteRepository;
@@ -44,6 +46,13 @@ public class TaskNoteService {
         User author = userRepository.findById(user.id())
             .orElseThrow(AuthenticatedUserNotFoundException::new);
         TaskNote note = taskNoteRepository.save(new TaskNote(task, author, request.content().trim()));
+        log.info(
+            "Task note created: noteId={}, taskId={}, projectId={}, authorId={}",
+            note.getId(),
+            taskId,
+            task.getProject().getId(),
+            user.id()
+        );
         return TaskNoteResponse.from(note);
     }
 
@@ -52,6 +61,12 @@ public class TaskNoteService {
         TaskNote note = taskNoteRepository.findByIdAndTaskProjectOwnerId(noteId, user.id())
             .orElseThrow(TaskNoteNotFoundException::new);
         taskNoteRepository.delete(note);
+        log.info(
+            "Task note deleted: noteId={}, taskId={}, ownerId={}",
+            noteId,
+            note.getTask().getId(),
+            user.id()
+        );
     }
 
     private Task findOwnedTask(AuthenticatedUser user, UUID taskId) {

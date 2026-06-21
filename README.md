@@ -19,6 +19,11 @@ Adresy:
 - backend health: http://localhost:8080/api/health
 - Swagger UI: http://localhost:8080/swagger-ui/index.html
 
+Dane demo dla lokalnego profilu Docker Compose:
+
+- email: `demo@taskflow.local`
+- hasło: `demo1234`
+
 Zatrzymanie:
 
 ```bash

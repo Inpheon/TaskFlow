@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,9 +31,10 @@ public class ProjectTaskController {
     @GetMapping("/tasks")
     List<TaskResponse> list(
         @AuthenticationPrincipal AuthenticatedUser user,
-        @PathVariable UUID projectId
+        @PathVariable UUID projectId,
+        @ModelAttribute TaskListRequest request
     ) {
-        return taskService.list(user, projectId);
+        return taskService.list(user, projectId, request);
     }
 
     @PostMapping("/tasks")
