@@ -6,14 +6,17 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import pl.uj.taskflow.auth.DuplicateEmailException;
 import pl.uj.taskflow.auth.InvalidCredentialsException;
 import pl.uj.taskflow.note.TaskNoteNotFoundException;
 import pl.uj.taskflow.project.ProjectNotFoundException;
 import pl.uj.taskflow.security.AuthenticatedUserNotFoundException;
+import pl.uj.taskflow.task.InvalidTaskListQueryException;
 import pl.uj.taskflow.task.InvalidTaskPositionException;
 import pl.uj.taskflow.task.TaskNotFoundException;
 
@@ -69,6 +72,19 @@ public class GlobalExceptionHandler {
         HttpServletRequest request
     ) {
         return error(HttpStatus.BAD_REQUEST, "Validation error", exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidTaskListQueryException.class)
+    ResponseEntity<ApiError> handleInvalidTaskListQuery(
+        InvalidTaskListQueryException exception,
+        HttpServletRequest request
+    ) {
+        return error(HttpStatus.BAD_REQUEST, "Validation error", exception.getMessage(), request);
+    }
+
+    @ExceptionHandler({BindException.class, MethodArgumentTypeMismatchException.class})
+    ResponseEntity<ApiError> handleInvalidRequestParameters(Exception exception, HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "Validation error", "Request parameters are invalid", request);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

@@ -4,8 +4,12 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
+import org.springframework.context.annotation.Primary
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.testcontainers.containers.PostgreSQLContainer
@@ -21,7 +25,10 @@ import pl.uj.taskflow.user.UserRepository
 import spock.lang.Shared
 import spock.lang.Specification
 
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
@@ -34,7 +41,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
+@Import(FixedClockConfiguration)
 class TaskITSpec extends Specification {
+
+    static final Instant NOW = Instant.parse("2026-06-15T12:00:00Z")
 
     @Shared
     @ServiceConnection
@@ -178,6 +188,141 @@ class TaskITSpec extends Specification {
         mockMvc.perform(get("/api/projects/${project.id}/tasks")
             .header("Authorization", bearer(ownerSession)))
             .andExpect(status().isNotFound())
+    }
+
+    def "list tasks filters by status priority due dates overdue state and query"() {
+        given:
+        JsonNode session = registerUser("owner@example.com")
+        User owner = userRepository.findByEmail("owner@example.com").orElseThrow()
+        Project project = projectRepository.save(new Project(owner, "Project", null))
+        saveTask(project, "Write API contract", "diagram and endpoints", TaskStatus.TODO, TaskPriority.HIGH,
+            LocalDate.of(2026, 6, 10), 0)
+        saveTask(project, "Review frontend", "check screens", TaskStatus.IN_PROGRESS, TaskPriority.MEDIUM,
+            LocalDate.of(2026, 6, 20), 0)
+        saveTask(project, "Archive notes", "diagram done", TaskStatus.DONE, TaskPriority.LOW,
+            LocalDate.of(2026, 6, 5), 0)
+
+        expect:
+        mockMvc.perform(get("/api/projects/${project.id}/tasks?status=TODO")
+            .header("Authorization", bearer(session)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath('$[0].title').value("Write API contract"))
+            .andExpect(jsonPath('$[1]').doesNotExist())
+
+        and:
+        mockMvc.perform(get("/api/projects/${project.id}/tasks?priority=MEDIUM")
+            .header("Authorization", bearer(session)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath('$[0].title').value("Review frontend"))
+            .andExpect(jsonPath('$[1]').doesNotExist())
+
+        and:
+        mockMvc.perform(get("/api/projects/${project.id}/tasks?dueAfter=2026-06-10&dueBefore=2026-06-20")
+            .header("Authorization", bearer(session)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath('$[0].title').value("Write API contract"))
+            .andExpect(jsonPath('$[1].title').value("Review frontend"))
+            .andExpect(jsonPath('$[2]').doesNotExist())
+
+        and:
+        mockMvc.perform(get("/api/projects/${project.id}/tasks?overdue=true")
+            .header("Authorization", bearer(session)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath('$[0].title').value("Write API contract"))
+            .andExpect(jsonPath('$[1]').doesNotExist())
+
+        and:
+        mockMvc.perform(get("/api/projects/${project.id}/tasks?q=DIAGRAM")
+            .header("Authorization", bearer(session)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath('$[0].title').value("Write API contract"))
+            .andExpect(jsonPath('$[1].title').value("Archive notes"))
+            .andExpect(jsonPath('$[2]').doesNotExist())
+    }
+
+    def "list tasks combines filters"() {
+        given:
+        JsonNode session = registerUser("owner@example.com")
+        User owner = userRepository.findByEmail("owner@example.com").orElseThrow()
+        Project project = projectRepository.save(new Project(owner, "Project", null))
+        saveTask(project, "Prepare diagrams", "architecture", TaskStatus.TODO, TaskPriority.HIGH,
+            LocalDate.of(2026, 6, 10), 0)
+        saveTask(project, "Prepare release", "architecture", TaskStatus.TODO, TaskPriority.MEDIUM,
+            LocalDate.of(2026, 6, 10), 1)
+        saveTask(project, "Review diagrams", "architecture", TaskStatus.IN_PROGRESS, TaskPriority.HIGH,
+            LocalDate.of(2026, 6, 10), 0)
+
+        expect:
+        mockMvc.perform(get("/api/projects/${project.id}/tasks?status=TODO&priority=HIGH&q=diagram")
+            .header("Authorization", bearer(session)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath('$[0].title').value("Prepare diagrams"))
+            .andExpect(jsonPath('$[1]').doesNotExist())
+    }
+
+    def "list tasks sorts by supported fields"() {
+        given:
+        JsonNode session = registerUser("owner@example.com")
+        User owner = userRepository.findByEmail("owner@example.com").orElseThrow()
+        Project project = projectRepository.save(new Project(owner, "Project", null))
+        saveTask(project, "Beta", null, TaskStatus.TODO, TaskPriority.LOW, LocalDate.of(2026, 6, 20), 0)
+        saveTask(project, "alpha", null, TaskStatus.IN_PROGRESS, TaskPriority.HIGH, LocalDate.of(2026, 6, 10), 0)
+        saveTask(project, "Gamma", null, TaskStatus.DONE, TaskPriority.MEDIUM, null, 0)
+
+        expect:
+        mockMvc.perform(get("/api/projects/${project.id}/tasks?sort=title")
+            .header("Authorization", bearer(session)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath('$[0].title').value("alpha"))
+            .andExpect(jsonPath('$[1].title').value("Beta"))
+            .andExpect(jsonPath('$[2].title').value("Gamma"))
+
+        and:
+        mockMvc.perform(get("/api/projects/${project.id}/tasks?sort=priority&direction=desc")
+            .header("Authorization", bearer(session)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath('$[0].title').value("alpha"))
+            .andExpect(jsonPath('$[1].title').value("Gamma"))
+            .andExpect(jsonPath('$[2].title').value("Beta"))
+
+        and:
+        mockMvc.perform(get("/api/projects/${project.id}/tasks?sort=dueDate&direction=desc")
+            .header("Authorization", bearer(session)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath('$[0].title').value("Beta"))
+            .andExpect(jsonPath('$[1].title').value("alpha"))
+            .andExpect(jsonPath('$[2].title').value("Gamma"))
+
+        and:
+        mockMvc.perform(get("/api/projects/${project.id}/tasks?sort=status&direction=desc")
+            .header("Authorization", bearer(session)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath('$[0].title').value("Gamma"))
+            .andExpect(jsonPath('$[1].title').value("alpha"))
+            .andExpect(jsonPath('$[2].title').value("Beta"))
+    }
+
+    def "list tasks rejects invalid query parameters"() {
+        given:
+        JsonNode session = registerUser("owner@example.com")
+        User owner = userRepository.findByEmail("owner@example.com").orElseThrow()
+        Project project = projectRepository.save(new Project(owner, "Project", null))
+
+        expect:
+        mockMvc.perform(get("/api/projects/${project.id}/tasks${query}")
+            .header("Authorization", bearer(session)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath('$.error').value("Validation error"))
+
+        where:
+        query << [
+            "?status=UNKNOWN",
+            "?priority=UNKNOWN",
+            "?dueBefore=soon",
+            "?sort=unknown",
+            "?sort=title&direction=sideways",
+            "?direction=asc"
+        ]
     }
 
     def "get task returns owned task"() {
@@ -602,7 +747,19 @@ class TaskITSpec extends Specification {
     }
 
     private Task saveTask(Project project, String title, TaskStatus status, int position) {
-        Task task = new Task(project, title, null, TaskPriority.MEDIUM, null, position)
+        return saveTask(project, title, null, status, TaskPriority.MEDIUM, null, position)
+    }
+
+    private Task saveTask(
+        Project project,
+        String title,
+        String description,
+        TaskStatus status,
+        TaskPriority priority,
+        LocalDate dueDate,
+        int position
+    ) {
+        Task task = new Task(project, title, description, priority, dueDate, position)
         if (status != TaskStatus.TODO) {
             task.move(status, position)
         }
@@ -632,5 +789,15 @@ class TaskITSpec extends Specification {
 
     private String bearer(JsonNode session) {
         return "Bearer ${session.get("accessToken").asText()}"
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class FixedClockConfiguration {
+
+        @Bean
+        @Primary
+        Clock fixedClock() {
+            return Clock.fixed(NOW, ZoneOffset.UTC)
+        }
     }
 }

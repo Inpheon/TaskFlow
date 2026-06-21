@@ -23,6 +23,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/taskflow
       SPRING_DATASOURCE_USERNAME: taskflow
       SPRING_DATASOURCE_PASSWORD: taskflow
+      SPRING_PROFILES_ACTIVE: dev
       TASKFLOW_JWT_SECRET: change-me-in-local-env-32-bytes-minimum
     ports:
       - "8080:8080"

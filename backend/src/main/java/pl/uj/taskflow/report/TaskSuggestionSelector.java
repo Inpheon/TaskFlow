@@ -8,20 +8,21 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 import pl.uj.taskflow.task.Task;
 import pl.uj.taskflow.task.TaskPriority;
+import pl.uj.taskflow.task.TaskRules;
 
 @Component
 public class TaskSuggestionSelector {
 
     public Optional<TaskSuggestion> select(List<Task> tasks, LocalDate today) {
         return tasks.stream()
-            .filter(TaskInsightRules::isOpen)
+            .filter(TaskRules::isOpen)
             .min(comparator(today))
             .map(task -> new TaskSuggestion(task, reason(task, today)));
     }
 
     private Comparator<Task> comparator(LocalDate today) {
         return Comparator
-            .comparing((Task task) -> !TaskInsightRules.isOverdue(task, today))
+            .comparing((Task task) -> !TaskRules.isOverdue(task, today))
             .thenComparing(Task::getDueDate, Comparator.nullsLast(Comparator.naturalOrder()))
             .thenComparingInt(task -> priorityRank(task.getPriority()))
             .thenComparing(Task::getCreatedAt)
@@ -29,7 +30,7 @@ public class TaskSuggestionSelector {
     }
 
     private SuggestionReason reason(Task task, LocalDate today) {
-        if (TaskInsightRules.isOverdue(task, today)) {
+        if (TaskRules.isOverdue(task, today)) {
             return SuggestionReason.OVERDUE;
         }
         if (task.getDueDate() != null) {

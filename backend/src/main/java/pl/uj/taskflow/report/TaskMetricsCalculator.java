@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 import pl.uj.taskflow.task.Task;
 import pl.uj.taskflow.task.TaskPriority;
+import pl.uj.taskflow.task.TaskRules;
 import pl.uj.taskflow.task.TaskStatus;
 
 @Component
@@ -20,10 +21,10 @@ public class TaskMetricsCalculator {
             ? 0
             : (int) Math.round(done * 100.0 / total);
         long overdue = tasks.stream()
-            .filter(task -> TaskInsightRules.isOverdue(task, today))
+            .filter(task -> TaskRules.isOverdue(task, today))
             .count();
         long highPriorityOpen = tasks.stream()
-            .filter(TaskInsightRules::isOpen)
+            .filter(TaskRules::isOpen)
             .filter(task -> task.getPriority() == TaskPriority.HIGH)
             .count();
 

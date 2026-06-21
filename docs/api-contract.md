@@ -196,6 +196,20 @@ Endpointy wymagaja autoryzacji. Dostep do zadania wynika z dostepu do projektu. 
 
 ### GET /api/projects/{projectId}/tasks
 
+Opcjonalne query params:
+
+- `status`: `TODO`, `IN_PROGRESS`, `DONE`
+- `priority`: `LOW`, `MEDIUM`, `HIGH`
+- `dueAfter`: data `YYYY-MM-DD`, wlacznie
+- `dueBefore`: data `YYYY-MM-DD`, wlacznie
+- `overdue`: `true` albo `false`; zalegle oznacza otwarte zadanie z terminem przed dzisiejsza data UTC
+- `q`: wyszukiwanie po tytule i opisie, bez rozrozniania wielkosci liter
+- `sort`: `createdAt`, `dueDate`, `priority`, `title`, `status`
+- `direction`: `asc` albo `desc`; mozna podac tylko razem z `sort`
+
+Bez `sort` endpoint zwraca zadania w kolejnosci tablicy: `TODO`, `IN_PROGRESS`, `DONE`, a w kolumnach po `position`.
+Niepoprawne parametry zwracaja 400.
+
 Response 200:
 
 ```json
@@ -458,7 +472,13 @@ Response 204, jezeli projekt nie ma otwartych zadan.
 
 ## Notes
 
+Notes pelnia role komentarzy pod zadaniem.
+
+Endpointy wymagaja autoryzacji. Dostep do notatki wynika z dostepu do zadania i projektu. Brak zasobu i zasob nalezacy do innego uzytkownika zwracaja 404.
+
 ### GET /api/tasks/{taskId}/notes
+
+Notatki sa zwracane od najstarszej do najnowszej.
 
 Response 200:
 
@@ -468,6 +488,7 @@ Response 200:
     "id": "uuid",
     "taskId": "uuid",
     "authorId": "uuid",
+    "authorDisplayName": "Demo User",
     "content": "Remember to update ADR after implementation.",
     "createdAt": "2026-05-25T18:00:00Z"
   }
@@ -475,6 +496,8 @@ Response 200:
 ```
 
 ### POST /api/tasks/{taskId}/notes
+
+Autorem notatki jest aktualnie zalogowany uzytkownik. `content` nie moze byc pusty.
 
 Request:
 
@@ -491,6 +514,7 @@ Response 201:
   "id": "uuid",
   "taskId": "uuid",
   "authorId": "uuid",
+  "authorDisplayName": "Demo User",
   "content": "Remember to update ADR after implementation.",
   "createdAt": "2026-05-25T18:00:00Z"
 }
