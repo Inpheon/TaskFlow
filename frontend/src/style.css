@@ -301,7 +301,7 @@ textarea:focus-visible {
   align-content: center;
   gap: 10px;
   padding: 36px;
-  border: 1px dashed var(--color-border-strong);
+  /*border: 1px dashed var(--color-border-strong);*/
   border-radius: var(--radius-panel);
   color: var(--color-muted);
   background: var(--color-surface);
@@ -350,7 +350,8 @@ textarea:focus-visible {
   box-shadow: 0 1px 2px rgb(24 35 43 / 3%);
 }
 
-.project-list-toolbar {
+.project-list-toolbar,
+.task-list-toolbar {
   display: grid;
   gap: 22px;
   grid-template-columns: minmax(0, 1fr) auto auto;
@@ -512,12 +513,13 @@ textarea:focus-visible {
   gap: 7px;
   color: #34414c;
   font-size: 0.85rem;
-  font-weight: 700;
+
 }
 
 .field span {
   display: flex;
   justify-content: space-between;
+  font-weight: 750;
 }
 
 .field span small,
@@ -528,7 +530,8 @@ textarea:focus-visible {
 }
 
 .field input,
-.field textarea {
+.field textarea,
+.field select {
   width: 100%;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-control);
@@ -537,7 +540,8 @@ textarea:focus-visible {
   transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 
-.field input {
+.field input,
+.field select {
   height: 43px;
   padding: 0 12px;
 }
@@ -549,12 +553,14 @@ textarea:focus-visible {
 }
 
 .field input:hover,
-.field textarea:hover {
+.field textarea:hover,
+.field select:hover {
   border-color: #abb7c0;
 }
 
 .field input:focus,
-.field textarea:focus {
+.field textarea:focus,
+.field select:focus {
   border-color: #5b8d86;
   box-shadow: 0 0 0 3px rgb(36 112 102 / 10%);
   outline: 0;
@@ -674,6 +680,252 @@ textarea:focus-visible {
   border-top: 1px solid var(--color-border);
 }
 
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.board-column {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-background);
+  overflow: hidden;
+}
+
+.board-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  background: #fafbfc;
+  font-size: 0.8rem;
+  font-weight: 760;
+  color: #33404a;
+}
+
+.board-column-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--color-border);
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.board-column-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.board-column-empty {
+  margin: 0;
+  padding: 20px 0;
+  color: var(--color-subtle);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.task-card {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-left-width: 3px;
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+
+.task-card.priority-low {
+  border-left-color: var(--color-primary);
+}
+
+.task-card.priority-medium {
+  border-left-color: #c07f00;
+}
+
+.task-card.priority-high {
+  border-left-color: var(--color-danger);
+}
+
+.task-priority {
+  font-size: 0.67rem;
+  font-weight: 780;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.task-card.priority-low .task-priority {
+  color: var(--color-primary);
+}
+
+.task-card.priority-medium .task-priority {
+  color: #c07f00;
+}
+
+.task-card.priority-high .task-priority {
+  color: var(--color-danger);
+}
+
+.task-title {
+  margin: 0;
+  color: var(--color-heading) !important;
+  font-size: 0.85rem;
+  font-weight: 680;
+  line-height: 1.35;
+}
+
+.task-due {
+  color: var(--color-subtle);
+  font-size: 0.73rem;
+}
+
+.task-section {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface);
+  box-shadow: 0 1px 2px rgb(24 35 43 / 3%);
+}
+
+.task-list-toolbar strong {
+  color: #33404a;
+  font-size: 0.82rem;
+}
+
+.task-list-toolbar span {
+  color: var(--color-subtle);
+  font-size: 0.76rem;
+}
+
+.task-list {
+  overflow: hidden;
+}
+
+.task-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  align-items: center;
+  gap: 20px;
+  min-height: 80px;
+  padding: 14px 18px 14px 20px;
+  border-bottom: 1px solid #e5e9ec;
+  border-left: 3px solid transparent;
+  transition: background 120ms ease;
+}
+
+.task-row:hover {
+  background: #fbfcfc;
+}
+
+.task-row:last-child {
+  border-bottom: 0;
+}
+
+.task-row.priority-low {
+  border-left-color: var(--color-primary);
+}
+
+.task-row.priority-medium {
+  border-left-color: #c07f00;
+}
+
+.task-row.priority-high {
+  border-left-color: var(--color-danger);
+}
+
+.task-row-main {
+  min-width: 0;
+}
+
+.task-row-title {
+  color: #1b2c38;
+  font-size: 0.9rem;
+  font-weight: 760;
+}
+
+.task-row-description {
+  overflow: hidden;
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 0.83rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-tags {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-end;
+}
+
+.task-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.68rem;
+  font-weight: 780;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.task-tag.status-todo {
+  background: #f0f3f5;
+  color: #52606c;
+}
+
+.task-tag.status-in_progress {
+  background: #fff8e6;
+  color: #c07f00;
+}
+
+.task-tag.status-done {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.task-tag.priority-low {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.task-tag.priority-medium {
+  background: #fff8e6;
+  color: #c07f00;
+}
+
+.task-tag.priority-high {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.task-dates {
+  display: grid;
+  gap: 3px;
+  text-align: right;
+  font-size: 0.73rem;
+  color: var(--color-subtle);
+}
+
+.task-dates b {
+  color: var(--color-muted);
+  font-weight: 680;
+}
+
 @media (max-width: 800px) {
   .app-header {
     grid-template-columns: 1fr auto;
@@ -696,6 +948,10 @@ textarea:focus-visible {
 
   .auth-panel {
     padding: 30px;
+  }
+
+  .board {
+    grid-template-columns: auto;
   }
 }
 

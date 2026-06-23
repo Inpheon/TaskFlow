@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import {computed, onMounted, reactive, ref} from "vue";
-import { ArrowRight, FolderKanban, RefreshCw, Trash2, Plus, SquarePen } from "@lucide/vue";
-import { RouterLink } from "vue-router";
-import { listProjects, deleteProject, createProject, getProject, updateProject } from "@/api/projects";
-import { ApiClientError } from "@/api/http";
+import {ArrowRight, FolderKanban, Plus, RefreshCw, SquarePen, Trash2} from "@lucide/vue";
+import {RouterLink} from "vue-router";
+import {createProject, deleteProject, getProject, listProjects, updateProject} from "@/api/projects";
+import {ApiClientError} from "@/api/http";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseDialog from "@/components/BaseDialog.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import StatePanel from "@/components/StatePanel.vue";
-import type { Project } from "@/types/api";
+import type {Project} from "@/types/api";
 import FormField from "@/components/FormField.vue";
 
 const projects = ref<Project[]>([]);
@@ -63,10 +63,6 @@ async function promptEdit(projectId: string, index: number) {
   }
 }
 
-function promptDelete(projectId: string, index: number, name: string) {
-  pendingDelete.value = { id: projectId, index, name };
-}
-
 async function removeProject(projectId: string, index: number) {
   loading.value = true;
   loadError.value = null;
@@ -76,10 +72,14 @@ async function removeProject(projectId: string, index: number) {
   } catch (error) {
     loadError.value = error instanceof ApiClientError
       ? error.message
-      : "Unable to delete projects";
+      : "Unable to delete the project";
   } finally {
     loading.value = false;
   }
+}
+
+function promptDelete(projectId: string, index: number, name: string) {
+  pendingDelete.value = { id: projectId, index, name };
 }
 
 async function confirmDelete() {
@@ -93,11 +93,10 @@ async function submitEdit() {
   if (!pendingEdit.value) return;
   loading.value = true;
   try {
-    const updated = await updateProject(pendingEdit.value.id, {
+    projects.value[pendingEdit.value.index] = await updateProject(pendingEdit.value.id, {
       name: form.name.trim(),
       description: form.description || null
     });
-    projects.value[pendingEdit.value.index] = updated;
   } catch (error) {
     loadError.value = error instanceof ApiClientError
       ? error.message
