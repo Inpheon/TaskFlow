@@ -379,13 +379,14 @@ textarea:focus-visible {
 
 .project-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 22px;
   min-height: 84px;
   padding: 14px 18px;
   border-bottom: 1px solid #e5e9ec;
   transition: background 120ms ease;
+  cursor: pointer;
 }
 
 .project-row:hover {
@@ -424,10 +425,12 @@ textarea:focus-visible {
   font-weight: 760;
 }
 
-.project-name:hover {
+.drop-line {
+  display: flex;
+  align-items: center;
+  justify-content: left;
+  gap: 6px;
   color: var(--color-primary);
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .project-main p {
@@ -745,6 +748,7 @@ textarea:focus-visible {
   border-left-width: 3px;
   border-radius: var(--radius-control);
   background: var(--color-surface);
+  cursor: pointer;
 }
 
 .task-card.priority-low {
@@ -823,6 +827,7 @@ textarea:focus-visible {
   border-bottom: 1px solid #e5e9ec;
   border-left: 3px solid transparent;
   transition: background 120ms ease;
+  cursor: pointer;
 }
 
 .task-row:hover {
@@ -863,6 +868,131 @@ textarea:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.task-view-description {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
+.task-view-data {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+  margin: 0;
+}
+
+.task-view-badges-col,
+.task-view-dates-col {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.task-view-badges-col > div,
+.task-view-dates-col > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.task-view-badges-col dt,
+.task-view-dates-col dt {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.task-view-badges-col dd {
+  margin: 0;
+}
+
+.task-view-dates-col dd {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.notes-section {
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border);
+}
+
+.notes-heading {
+  margin: 0 0 12px;
+  color: var(--color-heading);
+  font-size: 0.88rem;
+  font-weight: 720;
+}
+
+.notes-loading {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+.note-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.note-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-background);
+}
+
+.note-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.note-content {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.note-meta {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+
+.note-author {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.notes-empty {
+  margin: 0 0 12px;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 
 .task-tags {
   display: flex;

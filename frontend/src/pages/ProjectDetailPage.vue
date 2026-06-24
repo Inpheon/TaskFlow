@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import {computed, onMounted, reactive, ref} from "vue";
-import {ArrowLeft, FolderKanban, Plus, RefreshCw, SquarePen, Trash2} from "@lucide/vue";
-import {RouterLink, useRoute} from "vue-router";
-import {deleteProject, getProject} from "@/api/projects";
-import {createTask, deleteTask, getTask, listTasks, projectBoard, updateTask} from "@/api/tasks";
-import {ApiClientError} from "@/api/http";
+import { computed, onMounted, reactive, ref } from "vue";
+import { ArrowLeft, FolderKanban, Plus, RefreshCw, SquarePen, Trash2 } from "@lucide/vue";
+import { RouterLink, useRoute } from "vue-router";
+import { getProject } from "@/api/projects";
+import { createNote, createTask, deleteNote, deleteTask, getNotes, getTask, listTasks, moveTask, projectBoard, updateTask } from "@/api/tasks";
+import { ApiClientError } from "@/api/http";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseDialog from "@/components/BaseDialog.vue";
 import FormField from "@/components/FormField.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import StatePanel from "@/components/StatePanel.vue";
-import type {BoardResponse, CreateTaskRequest, Project, TaskPriority, TaskResponse, TaskStatus} from "@/types/api";
+import type { BoardResponse, CreateTaskRequest, Project, TaskNoteResponse, TaskPriority, TaskResponse, TaskStatus } from "@/types/api";
 
 const STATUSES: TaskStatus[] = ["TODO", "IN_PROGRESS", "DONE"];
 const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -25,6 +25,9 @@ const PRIORITY_LABELS: Record<TaskPriority, string> = {
   HIGH: "High",
 };
 
+interface DragState { task: TaskResponse; fromStatus: TaskStatus }
+interface DropTarget { status: TaskStatus; index: number }
+
 const route = useRoute();
 const project = ref<Project | null>(null);
 const board = ref<BoardResponse | null>(null);
@@ -36,6 +39,17 @@ const pendingAdd = ref(false);
 const pendingEdit = ref<{ id: string; index: number } | null>(null);
 const error = ref<string | null>(null);
 const dialogError = ref<string | null>(null);
+const dragging = ref<DragState | null>(null);
+const dropAt = ref<DropTarget | null>(null);
+const viewingTask = ref<TaskResponse | null>(null);
+const viewingTaskNotes = ref<TaskNoteResponse[]>([]);
+const notesLoading = ref(false);
+const notesError = ref<string | null>(null);
+const newNoteContent = ref("");
+
+const TASK_NAME_MAX_LENGTH : string = "200"
+const TASK_DESCR_MAX_LENGTH : string = "5000"
+const TASK_NOTE_MAX_LENGTH : string = "5000"
 
 const taskCount = computed(() => {
   const n = tasks.value.length;
@@ -64,7 +78,7 @@ async function loadProject() {
   } catch (caught) {
     error.value = caught instanceof ApiClientError
       ? caught.message
-      : "Unable to load the f";
+      : "Unable to load the project";
   } finally {
     loading.value = false;
   }
@@ -77,6 +91,16 @@ async function refreshWorkspace() {
     error.value = caught instanceof ApiClientError
       ? caught.message
       : "Unable to refresh the project workspace";
+  }
+}
+
+async function refreshTaskList() {
+  try {
+    if (project.value) tasks.value = await listTasks(project.value.id);
+  } catch (caught) {
+    error.value = caught instanceof ApiClientError
+      ? caught.message
+      : "Unable to refresh the task list";
   }
 }
 
@@ -152,24 +176,24 @@ async function submitEdit() {
   }
 }
 
+function promptDelete(taskId: string, index: number, name: string) {
+  pendingDelete.value = { id: taskId, index, name };
+}
+
 async function removeTask(taskId: string, index: number) {
   loading.value = true;
   dialogError.value = null;
   try {
     await deleteTask(taskId);
-    tasks.value.splice(index, 1)
+    tasks.value.splice(index, 1);
     await refreshWorkspace();
-  } catch (error) {
-    dialogError.value = error instanceof ApiClientError
-      ? error.message
+  } catch (caught) {
+    dialogError.value = caught instanceof ApiClientError
+      ? caught.message
       : "Unable to delete the task";
   } finally {
     loading.value = false;
   }
-}
-
-function promptDelete(taskId: string, index: number, name: string) {
-  pendingDelete.value = { id: taskId, index, name };
 }
 
 async function confirmDelete() {
@@ -177,6 +201,150 @@ async function confirmDelete() {
   const { id, index } = pendingDelete.value;
   pendingDelete.value = null;
   await removeTask(id, index);
+}
+
+function onDragStart(event: DragEvent, task: TaskResponse, fromStatus: TaskStatus) {
+  dragging.value = { task, fromStatus };
+  event.dataTransfer!.effectAllowed = "move";
+}
+
+function onDragEnd() {
+  dragging.value = null;
+  dropAt.value = null;
+}
+
+function onTaskDragOver(event: DragEvent, status: TaskStatus, index: number) {
+  if (!dragging.value) return;
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  dropAt.value = {
+    status,
+    index: event.clientY < rect.top + rect.height / 2 ? index : index + 1,
+  };
+}
+
+function onColumnDragOver(event: DragEvent, status: TaskStatus) {
+  if (!dragging.value) return;
+  // Fires only when the cursor is in the column body but NOT over a task card
+  // (cards call .stop on dragover). Scan rendered cards to find drop position.
+  const cards = Array.from(
+    (event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>(".task-card")
+  );
+  const col = board.value?.columns[status] ?? [];
+  let index = col.length;
+  for (let i = 0; i < cards.length; i++) {
+    const rect = cards[i].getBoundingClientRect();
+    if (event.clientY < rect.top + rect.height / 2) { index = i; break; }
+  }
+  dropAt.value = { status, index: index };
+}
+
+function onColumnDragLeave(event: DragEvent) {
+  if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node)) {
+    dropAt.value = null;
+  }
+}
+
+function showDropLine(status: TaskStatus, index: number): boolean {
+  if (!dropAt.value || !dragging.value) return false;
+  if (dropAt.value.status !== status || dropAt.value.index !== index) return false;
+  if (dragging.value.fromStatus === status) {
+    const col = board.value?.columns[status] ?? [];
+    const cur = col.findIndex(t => t.id === dragging.value!.task.id);
+    if (cur === index || cur + 1 === index) return false;
+  }
+  return true;
+}
+
+async function onDrop(status: TaskStatus) {
+  if (!dragging.value || !dropAt.value || dropAt.value.status !== status) return;
+
+  const { task, fromStatus } = dragging.value;
+  let position = dropAt.value.index;
+
+  dragging.value = null;
+  dropAt.value = null;
+
+  if (fromStatus === status) {
+    const col = board.value?.columns[status] ?? [];
+    const cur = col.findIndex(t => t.id === task.id);
+    if (cur === position || cur + 1 === position) return;
+    if (cur < position) position--;
+  }
+
+  try {
+    await moveTask(task.id, { targetStatus: status, position });
+    await refreshWorkspace();
+    await refreshTaskList();
+  } catch (caught) {
+    error.value = caught instanceof ApiClientError
+      ? caught.message
+      : "Unable to move task";
+  }
+}
+
+async function promptView(taskId: string) {
+  newNoteContent.value = "";
+  notesError.value = null;
+  viewingTaskNotes.value = [];
+  try {
+    viewingTask.value = await getTask(taskId);
+  } catch (caught) {
+    error.value = caught instanceof ApiClientError
+      ? caught.message
+      : "Unable to load task";
+    return;
+  }
+  notesLoading.value = true;
+  try {
+    viewingTaskNotes.value = await getNotes(taskId);
+  } catch (caught) {
+    notesError.value = caught instanceof ApiClientError
+      ? caught.message
+      : "Unable to load notes";
+  } finally {
+    notesLoading.value = false;
+  }
+}
+
+async function addNote() {
+  if (!viewingTask.value || !newNoteContent.value.trim()) return;
+  notesError.value = null;
+  try {
+    const note = await createNote(viewingTask.value.id, newNoteContent.value.trim());
+    viewingTaskNotes.value.push(note);
+    newNoteContent.value = "";
+  } catch (caught) {
+    notesError.value = caught instanceof ApiClientError
+      ? caught.message
+      : "Unable to add note";
+  }
+}
+
+async function removeNote(noteId: string) {
+  notesError.value = null;
+  try {
+    await deleteNote(noteId);
+    viewingTaskNotes.value = viewingTaskNotes.value.filter(n => n.id !== noteId);
+  } catch (caught) {
+    notesError.value = caught instanceof ApiClientError
+      ? caught.message
+      : "Unable to delete note";
+  }
+}
+
+function openEditFromView() {
+  if (!viewingTask.value) return;
+  const task = viewingTask.value;
+  viewingTask.value = null;
+  form.title = task.title;
+  form.description = task.description;
+  form.priority = task.priority;
+  form.dueDate = task.dueDate;
+  dialogError.value = null;
+  pendingEdit.value = {
+    id: task.id,
+    index: tasks.value.findIndex(t => t.id === task.id),
+  };
 }
 
 function formatDate(value: string) {
@@ -236,16 +404,35 @@ function formatDate(value: string) {
               <span>{{ STATUS_LABELS[status] }}</span>
               <span class="board-column-count">{{ (board.columns[status] ?? []).length }}</span>
             </div>
-            <div class="board-column-body">
-              <div
-                v-for="task in (board.columns[status] ?? [])"
-                :key="task.id"
-                class="task-card"
-                :class="`priority-${task.priority.toLowerCase()}`"
-              >
-                <span class="task-priority">{{ task.priority }}</span>
-                <p class="task-title">{{ task.title }}</p>
-                <span class="task-due">Due {{ formatDate(task.dueDate) }}</span>
+            <div
+              class="board-column-body"
+              @dragover.prevent="onColumnDragOver($event, status)"
+              @dragleave="onColumnDragLeave"
+              @drop.prevent="onDrop(status)"
+            >
+              <template v-for="(task, index) in (board.columns[status] ?? [])" :key="task.id">
+                <div v-if="showDropLine(status, index)" class="drop-line">
+                  <Plus :size="12" aria-hidden="true" />
+                </div>
+                <div
+                  class="task-card"
+                  :class="[
+                    `priority-${task.priority.toLowerCase()}`,
+                    { 'task-card--dragging': dragging?.task.id === task.id }
+                  ]"
+                  draggable="true"
+                  @click="promptView(task.id)"
+                  @dragstart="onDragStart($event, task, status)"
+                  @dragend="onDragEnd"
+                  @dragover.prevent.stop="onTaskDragOver($event, status, index)"
+                >
+                  <span class="task-priority">{{ task.priority }}</span>
+                  <p class="task-title">{{ task.title }}</p>
+                  <span class="task-due">Due {{ formatDate(task.dueDate) }}</span>
+                </div>
+              </template>
+              <div v-if="showDropLine(status, (board.columns[status] ?? []).length)" class="drop-line">
+                <Plus :size="12" aria-hidden="true" />
               </div>
               <p v-if="!(board.columns[status] ?? []).length" class="board-column-empty">
                 No tasks
@@ -281,6 +468,7 @@ function formatDate(value: string) {
             :key="task.id"
             class="task-row"
             :class="`priority-${task.priority.toLowerCase()}`"
+            @click="promptView(task.id)"
           >
             <div class="task-row-main">
               <span class="task-row-title">{{ task.title }}</span>
@@ -307,7 +495,7 @@ function formatDate(value: string) {
               class="icon-button"
               title="Edit task"
               :aria-label="`Edit ${task.title}`"
-              @click="promptEdit(task.id, index)"
+              @click.stop="promptEdit(task.id, index)"
             >
               <SquarePen :size="18" aria-hidden="true" />
             </button>
@@ -316,7 +504,7 @@ function formatDate(value: string) {
               class="icon-button"
               title="Delete task"
               :aria-label="`Delete ${task.title}`"
-              @click="promptDelete(task.id, index, task.title)"
+              @click.stop="promptDelete(task.id, index, task.title)"
             >
               <Trash2 :size="18" aria-hidden="true" />
             </button>
@@ -326,26 +514,116 @@ function formatDate(value: string) {
     </template>
 
     <BaseDialog
+      v-if="viewingTask"
+      :title="viewingTask.title"
+      :description="viewingTask.description"
+      @close="viewingTask = null"
+    >
+      <div class="dialog-body">
+        <div class="task-view-data">
+          <dl class="task-view-dates-col">
+            <div><dt>Due</dt><dd>{{ formatDate(viewingTask.dueDate) }}</dd></div>
+            <div><dt>Created</dt><dd>{{ formatDate(viewingTask.createdAt) }}</dd></div>
+            <div><dt>Updated</dt><dd>{{ formatDate(viewingTask.updatedAt) }}</dd></div>
+            <div v-if="viewingTask.completedAt">
+              <dt>Completed</dt><dd>{{ formatDate(viewingTask.completedAt) }}</dd>
+            </div>
+          </dl>
+          <dl class="task-view-badges-col">
+            <div>
+              <dt>Priority</dt>
+              <dd>
+                <span class="task-tag" :class="`priority-${viewingTask.priority.toLowerCase()}`">
+                  {{ PRIORITY_LABELS[viewingTask.priority] }}
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>
+                <span class="task-tag" :class="`status-${viewingTask.status.toLowerCase()}`">
+                  {{ STATUS_LABELS[viewingTask.status] }}
+                </span>
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <section class="notes-section">
+          <h3 class="notes-heading">Notes</h3>
+
+          <div v-if="notesLoading" class="notes-loading">
+            <div class="spinner" />
+          </div>
+          <template v-else>
+            <ul v-if="viewingTaskNotes.length" class="note-list">
+              <li v-for="note in viewingTaskNotes" :key="note.id" class="note-item">
+                <div class="note-body">
+                  <span class="note-meta">
+                    <span class="note-author">{{ note.authorDisplayName }}</span>
+                    · {{ formatDate(note.createdAt) }}
+                  </span>
+                  <span class="note-content">{{ note.content }}</span>
+                </div>
+                <button
+                  class="icon-button"
+                  title="Delete note"
+                  aria-label="Delete note"
+                  @click="removeNote(note.id)"
+                >
+                  <Trash2 :size="14" aria-hidden="true" />
+                </button>
+              </li>
+            </ul>
+            <p v-else class="notes-empty">No notes yet.</p>
+
+            <p v-if="notesError" class="form-error" role="alert">{{ notesError }}</p>
+
+            <form class="note-form" @submit.prevent="addNote">
+              <FormField label="New note" :hint="`Up to ${TASK_NOTE_MAX_LENGTH} characters`">
+                <textarea
+                  v-model="newNoteContent"
+                  placeholder="Write a note…"
+                  :maxlength="TASK_NAME_MAX_LENGTH"
+                  rows="2"
+                />
+              </FormField>
+              <BaseButton type="submit" variant="primary" :disabled="!newNoteContent.trim()">
+                Add note
+              </BaseButton>
+            </form>
+          </template>
+        </section>
+      </div>
+      <div class="dialog-footer">
+        <BaseButton @click="viewingTask = null">Cancel</BaseButton>
+        <BaseButton variant="primary" @click="openEditFromView">Edit</BaseButton>
+      </div>
+    </BaseDialog>
+
+    <BaseDialog
       v-if="pendingAdd || pendingEdit"
       :title="pendingEdit ? 'Edit task' : 'Add a new task'"
       @close="pendingAdd = false; pendingEdit = null"
     >
       <form @submit.prevent="pendingEdit ? submitEdit() : submit()">
         <div class="dialog-body">
-          <FormField label="Title">
+          <FormField label="Title" :hint="`Up to ${TASK_NAME_MAX_LENGTH} characters`">
             <input
               v-model="form.title"
               name="title"
               type="text"
+              :maxlength="TASK_NAME_MAX_LENGTH"
               required
               autofocus
             />
           </FormField>
-          <FormField label="Description">
+          <FormField label="Description" :hint="`Up to ${TASK_DESCR_MAX_LENGTH} characters`">
             <input
               v-model="form.description"
               name="description"
               type="text"
+              :maxlength="TASK_DESCR_MAX_LENGTH"
             />
           </FormField>
           <FormField label="Priority">

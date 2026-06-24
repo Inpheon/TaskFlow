@@ -1,5 +1,5 @@
 import { request } from "./http";
-import type {BoardResponse, CreateTaskRequest, Project, ProjectRequest, TaskResponse} from "@/types/api";
+import {BoardResponse, CreateTaskRequest, MoveTaskRequest, TaskNoteResponse, TaskResponse} from "@/types/api";
 
 export function projectBoard(projectId: string): Promise<BoardResponse> {
   return request<BoardResponse>(`/api/projects/${projectId}/board`);
@@ -27,8 +27,32 @@ export function updateTask(taskId: string, payload: CreateTaskRequest): Promise<
   });
 }
 
+export function moveTask(taskId: string, payload: MoveTaskRequest): Promise<TaskResponse> {
+  return request<TaskResponse>(`/api/tasks/${taskId}/move`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
 export function deleteTask(taskId: string): Promise<void> {
   return request<void>(`/api/tasks/${taskId}`, {
     method: "DELETE"
+  });
+}
+
+export function createNote(taskId: string, payload: string): Promise<TaskNoteResponse> {
+  return request<TaskNoteResponse>(`/api/tasks/${taskId}/notes`, {
+    method: "POST",
+    body: JSON.stringify({ content: payload }),
+  });
+}
+
+export function getNotes(taskId: string): Promise<TaskNoteResponse[]> {
+  return request<TaskNoteResponse[]>(`/api/tasks/${taskId}/notes`);
+}
+
+export function deleteNote(noteId: string): Promise<void> {
+  return request<void>(`/api/notes/${noteId}`, {
+    method: "DELETE",
   });
 }
