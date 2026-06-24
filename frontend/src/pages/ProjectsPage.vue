@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {computed, onMounted, reactive, ref} from "vue";
 import {ArrowRight, FolderKanban, Plus, RefreshCw, SquarePen, Trash2} from "@lucide/vue";
-import {RouterLink} from "vue-router";
+import {RouterLink, useRouter} from "vue-router";
 import {createProject, deleteProject, getProject, listProjects, updateProject} from "@/api/projects";
 import {ApiClientError} from "@/api/http";
 import BaseButton from "@/components/BaseButton.vue";
@@ -11,6 +11,7 @@ import StatePanel from "@/components/StatePanel.vue";
 import type {Project} from "@/types/api";
 import FormField from "@/components/FormField.vue";
 
+const router = useRouter();
 const projects = ref<Project[]>([]);
 const loading = ref(true);
 const loadError = ref<string | null>(null);
@@ -177,35 +178,27 @@ function formatDate(value: string) {
         </button>
       </div>
       <div class="project-list">
-        <article v-for="(project, index) in projects" :key="project.id" class="project-row">
+        <article
+            v-for="(project, index) in projects"
+            :key="project.id"
+            class="project-row"
+            @click="router.push({ name: 'project-detail', params: { projectId: project.id } })"
+          >
           <div class="project-main">
             <span class="project-icon">
               <FolderKanban :size="20" aria-hidden="true" />
             </span>
             <div>
-              <RouterLink
-                class="project-name"
-                :to="{ name: 'project-detail', params: { projectId: project.id } }"
-              >
-                {{ project.name }}
-              </RouterLink>
+              <span class="project-name">{{ project.name }}</span>
               <p>{{ project.description || "No description" }}</p>
             </div>
           </div>
           <span class="project-date">Updated {{ formatDate(project.updatedAt) }}</span>
-          <RouterLink
-            class="icon-button"
-            title="Open project"
-            :aria-label="`Open ${project.name}`"
-            :to="{ name: 'project-detail', params: { projectId: project.id } }"
-          >
-            <ArrowRight :size="18" aria-hidden="true" />
-          </RouterLink>
           <button
             class="icon-button"
             title="Edit project"
             :aria-label="`Edit ${project.name}`"
-            @click="promptEdit(project.id, index)"
+            @click.stop="promptEdit(project.id, index)"
           >
             <SquarePen :size="18" aria-hidden="true" />
           </button>
@@ -213,7 +206,7 @@ function formatDate(value: string) {
             class="icon-button"
             title="Delete project"
             :aria-label="`Delete ${project.name}`"
-            @click="promptDelete(project.id, index, project.name)"
+            @click.stop="promptDelete(project.id, index, project.name)"
           >
             <Trash2 :size="18" aria-hidden="true" />
           </button>

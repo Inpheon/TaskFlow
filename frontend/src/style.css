@@ -379,13 +379,14 @@ textarea:focus-visible {
 
 .project-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 22px;
   min-height: 84px;
   padding: 14px 18px;
   border-bottom: 1px solid #e5e9ec;
   transition: background 120ms ease;
+  cursor: pointer;
 }
 
 .project-row:hover {
@@ -430,12 +431,6 @@ textarea:focus-visible {
   justify-content: left;
   gap: 6px;
   color: var(--color-primary);
-}
-
-.project-name:hover {
-  color: var(--color-primary);
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .project-main p {
