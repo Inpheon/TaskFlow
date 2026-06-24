@@ -50,3 +50,32 @@ export interface HealthResponse {
 
 export type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
 export type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
+
+export interface TaskResponse {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate: string; // date
+  position: number;
+  createdAt: string; // datetime
+  updatedAt: string; // datetime
+  completedAt: string | null; // datetime
+}
+
+export interface BoardResponse {
+  project: {
+    id: string;
+    name: string;
+  }
+  columns : Record<TaskStatus, TaskResponse[]>
+}
+
+export interface CreateTaskRequest {
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  dueDate: string;
+}

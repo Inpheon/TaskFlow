@@ -1,39 +1,186 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import { ArrowLeft, FolderKanban, RefreshCw } from "@lucide/vue";
-import { RouterLink, useRoute } from "vue-router";
-import { getProject } from "@/api/projects";
-import { ApiClientError } from "@/api/http";
+import {computed, onMounted, reactive, ref} from "vue";
+import {ArrowLeft, FolderKanban, Plus, RefreshCw, SquarePen, Trash2} from "@lucide/vue";
+import {RouterLink, useRoute} from "vue-router";
+import {deleteProject, getProject} from "@/api/projects";
+import {createTask, deleteTask, getTask, listTasks, projectBoard, updateTask} from "@/api/tasks";
+import {ApiClientError} from "@/api/http";
 import BaseButton from "@/components/BaseButton.vue";
+import BaseDialog from "@/components/BaseDialog.vue";
+import FormField from "@/components/FormField.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import StatePanel from "@/components/StatePanel.vue";
-import type { Project } from "@/types/api";
+import type {BoardResponse, CreateTaskRequest, Project, TaskPriority, TaskResponse, TaskStatus} from "@/types/api";
+
+const STATUSES: TaskStatus[] = ["TODO", "IN_PROGRESS", "DONE"];
+const STATUS_LABELS: Record<TaskStatus, string> = {
+  TODO: "To Do",
+  IN_PROGRESS: "In Progress",
+  DONE: "Done",
+};
+const PRIORITIES: TaskPriority[] = ["LOW", "MEDIUM", "HIGH"];
+const PRIORITY_LABELS: Record<TaskPriority, string> = {
+  LOW: "Low",
+  MEDIUM: "Medium",
+  HIGH: "High",
+};
 
 const route = useRoute();
 const project = ref<Project | null>(null);
+const board = ref<BoardResponse | null>(null);
+const tasks = ref<TaskResponse[]>([]);
 const loading = ref(true);
+const formLoading = ref(false);
+const pendingDelete = ref<{ id: string; index: number; name: string } | null>(null);
+const pendingAdd = ref(false);
+const pendingEdit = ref<{ id: string; index: number } | null>(null);
 const error = ref<string | null>(null);
+const dialogError = ref<string | null>(null);
+
+const taskCount = computed(() => {
+  const n = tasks.value.length;
+  return `${n} ${n === 1 ? "task" : "tasks"}`;
+});
+
+const form = reactive({
+  title: "",
+  description: "",
+  priority: "" as TaskPriority | "",
+  dueDate: "",
+});
 
 onMounted(loadProject);
 
 async function loadProject() {
   loading.value = true;
   error.value = null;
+  const id = String(route.params.projectId);
   try {
-    project.value = await getProject(String(route.params.projectId));
+    [project.value, board.value, tasks.value] = await Promise.all([
+      getProject(id),
+      projectBoard(id),
+      listTasks(id),
+    ]);
   } catch (caught) {
     error.value = caught instanceof ApiClientError
       ? caught.message
-      : "Unable to load the project";
+      : "Unable to load the f";
   } finally {
     loading.value = false;
   }
 }
 
-function formatUpdatedAt(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium"
-  }).format(new Date(value));
+async function refreshWorkspace() {
+  try {
+    if (project.value) board.value = await projectBoard(project.value.id);
+  } catch (caught) {
+    error.value = caught instanceof ApiClientError
+      ? caught.message
+      : "Unable to refresh the project workspace";
+  }
+}
+
+function promptAdd() {
+  form.title = "";
+  form.description = "";
+  form.priority = "";
+  form.dueDate = "";
+  dialogError.value = null;
+  pendingAdd.value = true;
+}
+
+async function promptEdit(taskId: string, index: number) {
+  dialogError.value = null;
+  try {
+    const task = await getTask(taskId);
+    form.title = task.title;
+    form.description = task.description;
+    form.priority = task.priority;
+    form.dueDate = task.dueDate;
+    pendingEdit.value = { id: taskId, index };
+  } catch (caught) {
+    error.value = caught instanceof ApiClientError
+      ? caught.message
+      : "Unable to load task";
+  }
+}
+
+async function submit() {
+  if (!project.value) return;
+  formLoading.value = true;
+  dialogError.value = null;
+  try {
+    const payload: CreateTaskRequest = {
+      title: form.title.trim(),
+      description: form.description,
+      priority: form.priority as TaskPriority,
+      dueDate: form.dueDate,
+    };
+    const task = await createTask(project.value.id, payload);
+    tasks.value.push(task);
+    await refreshWorkspace();
+    pendingAdd.value = false;
+  } catch (caught) {
+    dialogError.value = caught instanceof ApiClientError
+      ? caught.message
+      : "Unable to create task";
+  } finally {
+    formLoading.value = false;
+  }
+}
+
+async function submitEdit() {
+  if (!pendingEdit.value) return;
+  formLoading.value = true;
+  dialogError.value = null;
+  try {
+    const payload: CreateTaskRequest = {
+      title: form.title.trim(),
+      description: form.description,
+      priority: form.priority as TaskPriority,
+      dueDate: form.dueDate,
+    };
+    tasks.value[pendingEdit.value.index] = await updateTask(pendingEdit.value.id, payload);
+    await refreshWorkspace();
+    pendingEdit.value = null;
+  } catch (caught) {
+    dialogError.value = caught instanceof ApiClientError
+      ? caught.message
+      : "Unable to update task";
+  } finally {
+    formLoading.value = false;
+  }
+}
+
+async function removeTask(taskId: string, index: number) {
+  loading.value = true;
+  dialogError.value = null;
+  try {
+    await deleteTask(taskId);
+    tasks.value.splice(index, 1)
+    await refreshWorkspace();
+  } catch (error) {
+    dialogError.value = error instanceof ApiClientError
+      ? error.message
+      : "Unable to delete the task";
+  } finally {
+    loading.value = false;
+  }
+}
+
+function promptDelete(taskId: string, index: number, name: string) {
+  pendingDelete.value = { id: taskId, index, name };
+}
+
+async function confirmDelete() {
+  if (!pendingDelete.value) return;
+  const { id, index } = pendingDelete.value;
+  pendingDelete.value = null;
+  await removeTask(id, index);
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
 }
 </script>
 
@@ -70,7 +217,7 @@ function formatUpdatedAt(value: string) {
         :description="project.description || 'No description provided.'"
       />
 
-      <p class="project-updated">Updated {{ formatUpdatedAt(project.updatedAt) }}</p>
+      <p class="project-updated">Updated {{ formatDate(project.updatedAt) }}</p>
 
       <section class="project-workspace">
         <header>
@@ -79,10 +226,165 @@ function formatUpdatedAt(value: string) {
           </span>
           <div>
             <h2>Project workspace</h2>
-            <p>Tasks and board views can be added here.</p>
+            <p class="project-updated">Drag tasks between categories to change their status</p>
           </div>
         </header>
+
+        <div v-if="board?.columns" class="board">
+          <div v-for="status in STATUSES" :key="status" class="board-column">
+            <div class="board-column-header">
+              <span>{{ STATUS_LABELS[status] }}</span>
+              <span class="board-column-count">{{ (board.columns[status] ?? []).length }}</span>
+            </div>
+            <div class="board-column-body">
+              <div
+                v-for="task in (board.columns[status] ?? [])"
+                :key="task.id"
+                class="task-card"
+                :class="`priority-${task.priority.toLowerCase()}`"
+              >
+                <span class="task-priority">{{ task.priority }}</span>
+                <p class="task-title">{{ task.title }}</p>
+                <span class="task-due">Due {{ formatDate(task.dueDate) }}</span>
+              </div>
+              <p v-if="!(board.columns[status] ?? []).length" class="board-column-empty">
+                No tasks
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
+
+      <div class="task-section">
+        <div class="task-list-toolbar">
+          <strong>All tasks</strong>
+          <span>{{ taskCount }}</span>
+          <button
+            class="icon-button"
+            title="Create a new task"
+            aria-label="Create a new task"
+            @click="promptAdd()"
+          >
+            <Plus :size="18" aria-hidden="true" />
+          </button>
+        </div>
+
+        <StatePanel
+          v-if="tasks.length === 0"
+          title="No tasks yet"
+          message="Tasks created for this project will appear here."
+        />
+
+        <div v-else class="task-list">
+          <article
+            v-for="(task, index) in tasks"
+            :key="task.id"
+            class="task-row"
+            :class="`priority-${task.priority.toLowerCase()}`"
+          >
+            <div class="task-row-main">
+              <span class="task-row-title">{{ task.title }}</span>
+              <p class="task-row-description">{{ task.description || "No description" }}</p>
+            </div>
+
+            <div class="task-tags">
+              <span class="task-tag" :class="`status-${task.status.toLowerCase()}`">
+                {{ STATUS_LABELS[task.status] }}
+              </span>
+              <span class="task-tag" :class="`priority-${task.priority.toLowerCase()}`">
+                {{ PRIORITY_LABELS[task.priority] }}
+              </span>
+            </div>
+
+            <div class="task-dates">
+              <span><b>Due</b> {{ formatDate(task.dueDate) }}</span>
+              <span><b>Created</b> {{ formatDate(task.createdAt) }}</span>
+              <span><b>Updated</b> {{ formatDate(task.updatedAt) }}</span>
+              <span v-if="task.completedAt"><b>Completed</b> {{ formatDate(task.completedAt) }}</span>
+            </div>
+
+            <button
+              class="icon-button"
+              title="Edit task"
+              :aria-label="`Edit ${task.title}`"
+              @click="promptEdit(task.id, index)"
+            >
+              <SquarePen :size="18" aria-hidden="true" />
+            </button>
+
+            <button
+              class="icon-button"
+              title="Delete task"
+              :aria-label="`Delete ${task.title}`"
+              @click="promptDelete(task.id, index, task.title)"
+            >
+              <Trash2 :size="18" aria-hidden="true" />
+            </button>
+          </article>
+        </div>
+      </div>
     </template>
+
+    <BaseDialog
+      v-if="pendingAdd || pendingEdit"
+      :title="pendingEdit ? 'Edit task' : 'Add a new task'"
+      @close="pendingAdd = false; pendingEdit = null"
+    >
+      <form @submit.prevent="pendingEdit ? submitEdit() : submit()">
+        <div class="dialog-body">
+          <FormField label="Title">
+            <input
+              v-model="form.title"
+              name="title"
+              type="text"
+              required
+              autofocus
+            />
+          </FormField>
+          <FormField label="Description">
+            <input
+              v-model="form.description"
+              name="description"
+              type="text"
+            />
+          </FormField>
+          <FormField label="Priority">
+            <select v-model="form.priority" name="priority" required>
+              <option value="" disabled>Select priority</option>
+              <option v-for="p in PRIORITIES" :key="p" :value="p">
+                {{ PRIORITY_LABELS[p] }}
+              </option>
+            </select>
+          </FormField>
+          <FormField label="Due date">
+            <input
+              v-model="form.dueDate"
+              name="dueDate"
+              type="date"
+              required
+            />
+          </FormField>
+          <p v-if="dialogError" class="form-error" role="alert">{{ dialogError }}</p>
+        </div>
+        <div class="dialog-footer">
+          <BaseButton @click="pendingAdd = false; pendingEdit = null">Cancel</BaseButton>
+          <BaseButton type="submit" variant="primary" :disabled="formLoading">
+            {{ pendingEdit ? (formLoading ? "Saving..." : "Save changes") : (formLoading ? "Adding..." : "Add") }}
+          </BaseButton>
+        </div>
+      </form>
+    </BaseDialog>
+
+    <BaseDialog
+      v-if="pendingDelete"
+      title="Delete task"
+      :description="`Are you sure you want to delete &quot;${pendingDelete.name}&quot;? This action cannot be undone.`"
+      @close="pendingDelete = null"
+    >
+      <div class="dialog-footer">
+        <BaseButton @click="pendingDelete = null">Cancel</BaseButton>
+        <BaseButton variant="danger" @click="confirmDelete">Delete</BaseButton>
+      </div>
+    </BaseDialog>
   </section>
 </template>
