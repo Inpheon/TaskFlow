@@ -26,6 +26,9 @@ const projectCount = computed(() => {
   return `${count} ${count === 1 ? "project" : "projects"}`;
 });
 
+const PROJECT_NAME_MAX_LENGTH : string = "160"
+const PROJECT_DESCR_MAX_LENGTH : string = "160"
+
 onMounted(loadProjects);
 
 async function loadProjects() {
@@ -236,20 +239,22 @@ function formatDate(value: string) {
     >
       <form @submit.prevent="pendingEdit ? submitEdit() : submit()">
         <div class="dialog-body">
-          <FormField label="Name">
+          <FormField label="Name" :hint="`Up to ${PROJECT_NAME_MAX_LENGTH} characters`">
             <input
               v-model="form.name"
               name="name"
               type="text"
+              :maxlength="PROJECT_NAME_MAX_LENGTH"
               required
               autofocus
             />
           </FormField>
-          <FormField label="Description">
+          <FormField label="Description" :hint="`Up to ${PROJECT_DESCR_MAX_LENGTH} characters`">
             <input
               v-model="form.description"
               name="description"
               type="text"
+              :maxlength="PROJECT_DESCR_MAX_LENGTH"
             />
           </FormField>
           <p v-if="loadError" class="form-error" role="alert">{{ loadError }}</p>

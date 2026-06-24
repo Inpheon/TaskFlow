@@ -43,6 +43,9 @@ const dragging = ref<DragState | null>(null);
 const dropAt = ref<DropTarget | null>(null);
 const viewingTask = ref<TaskResponse | null>(null);
 
+const TASK_NAME_MAX_LENGTH : string = "200"
+const TASK_DESCR_MAX_LENGTH : string = "5000"
+
 const taskCount = computed(() => {
   const n = tasks.value.length;
   return `${n} ${n === 1 ? "task" : "tasks"}`;
@@ -472,7 +475,7 @@ function formatDate(value: string) {
       @close="viewingTask = null"
     >
       <div class="dialog-body">
-        <dl class="task-view-dates">
+        <dl class="task-view-data">
           <div>
             <dt>Task priority</dt>
             <dd>
@@ -510,20 +513,22 @@ function formatDate(value: string) {
     >
       <form @submit.prevent="pendingEdit ? submitEdit() : submit()">
         <div class="dialog-body">
-          <FormField label="Title">
+          <FormField label="Title" :hint="`Up to ${TASK_NAME_MAX_LENGTH} characters`">
             <input
               v-model="form.title"
               name="title"
               type="text"
+              :maxlength="TASK_NAME_MAX_LENGTH"
               required
               autofocus
             />
           </FormField>
-          <FormField label="Description">
+          <FormField label="Description" :hint="`Up to ${TASK_DESCR_MAX_LENGTH} characters`">
             <input
               v-model="form.description"
               name="description"
               type="text"
+              :maxlength="TASK_DESCR_MAX_LENGTH"
             />
           </FormField>
           <FormField label="Priority">

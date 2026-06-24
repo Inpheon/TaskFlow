@@ -880,24 +880,24 @@ textarea:focus-visible {
   line-height: 1.55;
 }
 
-.task-view-dates {
+.task-view-data {
   display: grid;
   gap: 6px;
   margin: 0;
 }
 
-.task-view-dates > div {
+.task-view-data > div {
   display: flex;
   gap: 6px;
   font-size: 0.85rem;
 }
 
-.task-view-dates dt {
+.task-view-data dt {
   color: var(--color-muted);
   font-weight: 600;
 }
 
-.task-view-dates dd {
+.task-view-data dd {
   margin: 0;
   color: var(--color-text);
 }
