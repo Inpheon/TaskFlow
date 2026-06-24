@@ -3,14 +3,14 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { ArrowLeft, FolderKanban, Plus, RefreshCw, SquarePen, Trash2 } from "@lucide/vue";
 import { RouterLink, useRoute } from "vue-router";
 import { getProject } from "@/api/projects";
-import { createTask, deleteTask, getTask, listTasks, moveTask, projectBoard, updateTask } from "@/api/tasks";
+import { createNote, createTask, deleteNote, deleteTask, getNotes, getTask, listTasks, moveTask, projectBoard, updateTask } from "@/api/tasks";
 import { ApiClientError } from "@/api/http";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseDialog from "@/components/BaseDialog.vue";
 import FormField from "@/components/FormField.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import StatePanel from "@/components/StatePanel.vue";
-import type { BoardResponse, CreateTaskRequest, Project, TaskPriority, TaskResponse, TaskStatus } from "@/types/api";
+import type { BoardResponse, CreateTaskRequest, Project, TaskNoteResponse, TaskPriority, TaskResponse, TaskStatus } from "@/types/api";
 
 const STATUSES: TaskStatus[] = ["TODO", "IN_PROGRESS", "DONE"];
 const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -42,6 +42,10 @@ const dialogError = ref<string | null>(null);
 const dragging = ref<DragState | null>(null);
 const dropAt = ref<DropTarget | null>(null);
 const viewingTask = ref<TaskResponse | null>(null);
+const viewingTaskNotes = ref<TaskNoteResponse[]>([]);
+const notesLoading = ref(false);
+const notesError = ref<string | null>(null);
+const newNoteContent = ref("");
 
 const TASK_NAME_MAX_LENGTH : string = "200"
 const TASK_DESCR_MAX_LENGTH : string = "5000"
@@ -278,12 +282,52 @@ async function onDrop(status: TaskStatus) {
 }
 
 async function promptView(taskId: string) {
+  newNoteContent.value = "";
+  notesError.value = null;
+  viewingTaskNotes.value = [];
   try {
     viewingTask.value = await getTask(taskId);
   } catch (caught) {
     error.value = caught instanceof ApiClientError
       ? caught.message
       : "Unable to load task";
+    return;
+  }
+  notesLoading.value = true;
+  try {
+    viewingTaskNotes.value = await getNotes(taskId);
+  } catch (caught) {
+    notesError.value = caught instanceof ApiClientError
+      ? caught.message
+      : "Unable to load notes";
+  } finally {
+    notesLoading.value = false;
+  }
+}
+
+async function addNote() {
+  if (!viewingTask.value || !newNoteContent.value.trim()) return;
+  notesError.value = null;
+  try {
+    const note = await createNote(viewingTask.value.id, newNoteContent.value.trim());
+    viewingTaskNotes.value.push(note);
+    newNoteContent.value = "";
+  } catch (caught) {
+    notesError.value = caught instanceof ApiClientError
+      ? caught.message
+      : "Unable to add note";
+  }
+}
+
+async function removeNote(noteId: string) {
+  notesError.value = null;
+  try {
+    await deleteNote(noteId);
+    viewingTaskNotes.value = viewingTaskNotes.value.filter(n => n.id !== noteId);
+  } catch (caught) {
+    notesError.value = caught instanceof ApiClientError
+      ? caught.message
+      : "Unable to delete note";
   }
 }
 
@@ -475,30 +519,78 @@ function formatDate(value: string) {
       @close="viewingTask = null"
     >
       <div class="dialog-body">
-        <dl class="task-view-data">
-          <div>
-            <dt>Task priority</dt>
-            <dd>
-              <span class="task-tag" :class="`priority-${viewingTask.priority.toLowerCase()}`">
-                {{ PRIORITY_LABELS[viewingTask.priority] }}
-              </span>
-            </dd>
+        <div class="task-view-data">
+          <dl class="task-view-dates-col">
+            <div><dt>Due</dt><dd>{{ formatDate(viewingTask.dueDate) }}</dd></div>
+            <div><dt>Created</dt><dd>{{ formatDate(viewingTask.createdAt) }}</dd></div>
+            <div><dt>Updated</dt><dd>{{ formatDate(viewingTask.updatedAt) }}</dd></div>
+            <div v-if="viewingTask.completedAt">
+              <dt>Completed</dt><dd>{{ formatDate(viewingTask.completedAt) }}</dd>
+            </div>
+          </dl>
+          <dl class="task-view-badges-col">
+            <div>
+              <dt>Priority</dt>
+              <dd>
+                <span class="task-tag" :class="`priority-${viewingTask.priority.toLowerCase()}`">
+                  {{ PRIORITY_LABELS[viewingTask.priority] }}
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>
+                <span class="task-tag" :class="`status-${viewingTask.status.toLowerCase()}`">
+                  {{ STATUS_LABELS[viewingTask.status] }}
+                </span>
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <section class="notes-section">
+          <h3 class="notes-heading">Notes</h3>
+
+          <div v-if="notesLoading" class="notes-loading">
+            <div class="spinner" />
           </div>
-          <div>
-            <dt>Task status</dt>
-            <dd>
-              <span class="task-tag" :class="`status-${viewingTask.status.toLowerCase()}`">
-                {{ STATUS_LABELS[viewingTask.status] }}
-              </span>
-            </dd>
-          </div>
-          <div><dt>Due</dt><dd>{{ formatDate(viewingTask.dueDate) }}</dd></div>
-          <div><dt>Created</dt><dd>{{ formatDate(viewingTask.createdAt) }}</dd></div>
-          <div><dt>Updated</dt><dd>{{ formatDate(viewingTask.updatedAt) }}</dd></div>
-          <div v-if="viewingTask.completedAt">
-            <dt>Completed</dt><dd>{{ formatDate(viewingTask.completedAt) }}</dd>
-          </div>
-        </dl>
+          <template v-else>
+            <ul v-if="viewingTaskNotes.length" class="note-list">
+              <li v-for="note in viewingTaskNotes" :key="note.id" class="note-item">
+                <div class="note-body">
+                  <span class="note-meta">
+                    <span class="note-author">{{ note.authorDisplayName }}</span>
+                    · {{ formatDate(note.createdAt) }}
+                  </span>
+                  <span class="note-content">{{ note.content }}</span>
+                </div>
+                <button
+                  class="icon-button"
+                  title="Delete note"
+                  aria-label="Delete note"
+                  @click="removeNote(note.id)"
+                >
+                  <Trash2 :size="14" aria-hidden="true" />
+                </button>
+              </li>
+            </ul>
+            <p v-else class="notes-empty">No notes yet.</p>
+
+            <p v-if="notesError" class="form-error" role="alert">{{ notesError }}</p>
+
+            <form class="note-form" @submit.prevent="addNote">
+              <textarea
+                v-model="newNoteContent"
+                class="note-input"
+                placeholder="Write a note…"
+                rows="2"
+              />
+              <BaseButton type="submit" variant="primary" :disabled="!newNoteContent.trim()">
+                Add note
+              </BaseButton>
+            </form>
+          </template>
+        </section>
       </div>
       <div class="dialog-footer">
         <BaseButton @click="viewingTask = null">Cancel</BaseButton>

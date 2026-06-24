@@ -84,3 +84,12 @@ export interface MoveTaskRequest {
   targetStatus: TaskStatus;
   position: number;
 }
+
+export interface TaskNoteResponse {
+  id: string;
+  taskId: string;
+  authorId: string;
+  authorDisplayName: string;
+  content: string;
+  createdAt: string; // datetime
+}
