@@ -79,3 +79,8 @@ export interface CreateTaskRequest {
   priority: TaskPriority;
   dueDate: string;
 }
+
+export interface MoveTaskRequest {
+  targetStatus: TaskStatus;
+  position: number;
+}

@@ -424,6 +424,14 @@ textarea:focus-visible {
   font-weight: 760;
 }
 
+.drop-line {
+  display: flex;
+  align-items: center;
+  justify-content: left;
+  gap: 6px;
+  color: var(--color-primary);
+}
+
 .project-name:hover {
   color: var(--color-primary);
   text-decoration: underline;
@@ -745,6 +753,7 @@ textarea:focus-visible {
   border-left-width: 3px;
   border-radius: var(--radius-control);
   background: var(--color-surface);
+  cursor: pointer;
 }
 
 .task-card.priority-low {
@@ -823,6 +832,7 @@ textarea:focus-visible {
   border-bottom: 1px solid #e5e9ec;
   border-left: 3px solid transparent;
   transition: background 120ms ease;
+  cursor: pointer;
 }
 
 .task-row:hover {
@@ -862,6 +872,34 @@ textarea:focus-visible {
   font-size: 0.83rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.task-view-description {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
+.task-view-dates {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.task-view-dates > div {
+  display: flex;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.task-view-dates dt {
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.task-view-dates dd {
+  margin: 0;
+  color: var(--color-text);
 }
 
 .task-tags {

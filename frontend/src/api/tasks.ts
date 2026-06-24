@@ -1,5 +1,5 @@
 import { request } from "./http";
-import type {BoardResponse, CreateTaskRequest, Project, ProjectRequest, TaskResponse} from "@/types/api";
+import {BoardResponse, CreateTaskRequest, MoveTaskRequest, TaskResponse} from "@/types/api";
 
 export function projectBoard(projectId: string): Promise<BoardResponse> {
   return request<BoardResponse>(`/api/projects/${projectId}/board`);
@@ -30,5 +30,12 @@ export function updateTask(taskId: string, payload: CreateTaskRequest): Promise<
 export function deleteTask(taskId: string): Promise<void> {
   return request<void>(`/api/tasks/${taskId}`, {
     method: "DELETE"
+  });
+}
+
+export function moveTask(taskId: string, payload: MoveTaskRequest): Promise<TaskResponse> {
+  return request<TaskResponse>(`/api/tasks/${taskId}/move`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
   });
 }
