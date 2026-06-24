@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {computed, onMounted, reactive, ref} from "vue";
-import {ArrowRight, FolderKanban, Plus, RefreshCw, SquarePen, Trash2} from "@lucide/vue";
-import {RouterLink, useRouter} from "vue-router";
+import {FolderKanban, Plus, RefreshCw, SquarePen, Trash2} from "@lucide/vue";
+import {useRouter} from "vue-router";
 import {createProject, deleteProject, getProject, listProjects, updateProject} from "@/api/projects";
 import {ApiClientError} from "@/api/http";
 import BaseButton from "@/components/BaseButton.vue";
