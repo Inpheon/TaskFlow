@@ -49,6 +49,7 @@ const newNoteContent = ref("");
 
 const TASK_NAME_MAX_LENGTH : string = "200"
 const TASK_DESCR_MAX_LENGTH : string = "5000"
+const TASK_NOTE_MAX_LENGTH : string = "5000"
 
 const taskCount = computed(() => {
   const n = tasks.value.length;
@@ -579,12 +580,14 @@ function formatDate(value: string) {
             <p v-if="notesError" class="form-error" role="alert">{{ notesError }}</p>
 
             <form class="note-form" @submit.prevent="addNote">
-              <textarea
-                v-model="newNoteContent"
-                class="note-input"
-                placeholder="Write a note…"
-                rows="2"
-              />
+              <FormField label="New note" :hint="`Up to ${TASK_NOTE_MAX_LENGTH} characters`">
+                <textarea
+                  v-model="newNoteContent"
+                  placeholder="Write a note…"
+                  :maxlength="TASK_NAME_MAX_LENGTH"
+                  rows="2"
+                />
+              </FormField>
               <BaseButton type="submit" variant="primary" :disabled="!newNoteContent.trim()">
                 Add note
               </BaseButton>
