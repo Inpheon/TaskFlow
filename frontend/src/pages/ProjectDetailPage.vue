@@ -4,6 +4,7 @@ import { ArrowLeft, FolderKanban, Plus, RefreshCw, SquarePen, Trash2 } from "@lu
 import { RouterLink, useRoute } from "vue-router";
 import { getProject } from "@/api/projects";
 import { createNote, createTask, deleteNote, deleteTask, getNotes, getProjectReport, getProjectSummary, getTask, listTasks, moveTask, projectBoard, updateTask } from "@/api/tasks";
+import Knob from "primevue/knob";
 import { ApiClientError } from "@/api/http";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseDialog from "@/components/BaseDialog.vue";
@@ -422,25 +423,35 @@ function formatDate(value: string) {
             {{ reportLoading ? "Loading…" : "See Detailed Report" }}
           </BaseButton>
         </div>
-        <div class="stats-grid">
-          <div class="stat-card">
-            <span class="stat-value">{{ projectStats.totalTasks }}</span>
-            <span class="stat-label">Total tasks</span>
+        <div class="project-stats-layout">
+          <div class="project-stats-cards">
+            <div class="stat-card">
+              <span class="stat-value">{{ projectStats.totalTasks }}</span>
+              <span class="stat-label">Total tasks</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value">{{ projectStats.todo }}</span>
+              <span class="stat-label">To Do</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value">{{ projectStats.inProgress }}</span>
+              <span class="stat-label">In Progress</span>
+            </div>
+            <div class="stat-card" :class="{ 'stat-card--completed': projectStats.done > 0 }">
+              <span class="stat-value">{{ projectStats.done }}</span>
+              <span class="stat-label">Done</span>
+            </div>
           </div>
-          <div class="stat-card">
-            <span class="stat-value">{{ projectStats.todo }}</span>
-            <span class="stat-label">To Do</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-value">{{ projectStats.inProgress }}</span>
-            <span class="stat-label">In Progress</span>
-          </div>
-          <div class="stat-card" :class="{ 'stat-card--completed': projectStats.done > 0 }">
-            <span class="stat-value">{{ projectStats.done }}</span>
-            <span class="stat-label">Done</span>
-          </div>
-          <div class="stat-card" :class="{ 'stat-card--completed': projectStats.completionPercentage > 0 }">
-            <span class="stat-value">{{ projectStats.completionPercentage }}%</span>
+          <div class="project-stats-knob">
+            <Knob
+              :model-value="projectStats.completionPercentage"
+              :min="0"
+              :max="100"
+              :size="150"
+              :stroke-width="10"
+              value-template="{value}%"
+              readonly
+            />
             <span class="stat-label">Completed</span>
           </div>
         </div>

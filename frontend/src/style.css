@@ -354,6 +354,41 @@ textarea:focus-visible {
   gap: 16px;
 }
 
+.project-stats-layout {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.project-stats-cards {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.project-stats-knob {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.p-knob-range {
+  stroke: var(--color-border);
+}
+
+.p-knob-value {
+  stroke: var(--color-primary);
+}
+
+.p-knob-text {
+  fill: var(--color-heading);
+  font-family: inherit;
+  font-weight: 720;
+}
+
 .stats-heading {
   margin: 0;
   color: var(--color-heading);
