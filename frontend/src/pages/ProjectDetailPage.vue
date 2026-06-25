@@ -5,6 +5,7 @@ import { RouterLink, useRoute } from "vue-router";
 import { getProject } from "@/api/projects";
 import { createNote, createTask, deleteNote, deleteTask, getNotes, getProjectReport, getProjectSummary, getTask, listTasks, moveTask, projectBoard, updateTask } from "@/api/tasks";
 import Knob from "primevue/knob";
+import DatePicker from "primevue/datepicker";
 import { ApiClientError } from "@/api/http";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseDialog from "@/components/BaseDialog.vue";
@@ -66,6 +67,22 @@ const form = reactive({
   description: "",
   priority: "" as TaskPriority | "",
   dueDate: "",
+});
+
+// Bridges form.dueDate (YYYY-MM-DD string) with DatePicker's Date object
+const dueDatePicker = computed<Date | null>({
+  get() {
+    if (!form.dueDate) return null;
+    const [y, m, d] = form.dueDate.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  },
+  set(date: Date | null) {
+    if (!date) { form.dueDate = ""; return; }
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    form.dueDate = `${y}-${m}-${d}`;
+  },
 });
 
 onMounted(loadProject);
@@ -208,6 +225,13 @@ async function submitEdit() {
 
 function promptDelete(taskId: string, index: number, name: string) {
   pendingDelete.value = { id: taskId, index, name };
+}
+
+function promptDeleteFromEdit() {
+  if (!pendingEdit.value) return;
+  const { id, index } = pendingEdit.value;
+  pendingEdit.value = null;
+  promptDelete(id, index, form.title);
 }
 
 async function removeTask(taskId: string, index: number) {
@@ -705,18 +729,27 @@ function formatDate(value: string) {
             </select>
           </FormField>
           <FormField label="Due date">
-            <input
-              v-model="form.dueDate"
-              name="dueDate"
-              type="date"
-              required
+            <DatePicker
+              v-model="dueDatePicker"
+              date-format="dd/mm/yy"
+              :manual-input="false"
+              show-button-bar
+              fluid
             />
           </FormField>
           <p v-if="dialogError" class="form-error" role="alert">{{ dialogError }}</p>
         </div>
         <div class="dialog-footer">
           <BaseButton @click="pendingAdd = false; pendingEdit = null">Cancel</BaseButton>
-          <BaseButton type="submit" variant="primary" :disabled="formLoading">
+          <BaseButton
+            v-if="pendingEdit"
+            variant="danger"
+            :disabled="formLoading"
+            @click="promptDeleteFromEdit"
+          >
+            Delete
+          </BaseButton>
+          <BaseButton type="submit" variant="primary" :disabled="formLoading || !form.dueDate">
             {{ pendingEdit ? (formLoading ? "Saving..." : "Save changes") : (formLoading ? "Adding..." : "Add") }}
           </BaseButton>
         </div>

@@ -4,6 +4,9 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [vue()],
+  define: {
+    __BUNDLED_DEV__: JSON.stringify(true),
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url))
