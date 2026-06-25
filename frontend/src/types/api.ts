@@ -110,6 +110,13 @@ export interface SuggestedTaskSummary {
   dueDate: string; // datetime
 }
 
+export type SuggestedTaskReason = "OVERDUE" | "NEAREST_DUE_DATE" | "HIGH_PRIORITY" | "OLDEST_OPEN_TASK";
+
+export interface SuggestedTaskResponse {
+  task: SuggestedTaskSummary;
+  reason: SuggestedTaskReason;
+}
+
 export interface ProjectStatsResponse {
   totalTasks: number;
   todo: number;

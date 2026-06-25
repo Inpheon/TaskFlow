@@ -301,7 +301,6 @@ textarea:focus-visible {
   align-content: center;
   gap: 10px;
   padding: 36px;
-  /*border: 1px dashed var(--color-border-strong);*/
   border-radius: var(--radius-panel);
   color: var(--color-muted);
   background: var(--color-surface);
@@ -616,7 +615,25 @@ textarea:focus-visible {
 .project-workspace header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
+}
+
+.project-workspace-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.task-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.suggestion-reason {
+  margin-top: 0;
 }
 
 .project-workspace-icon {
@@ -1030,7 +1047,8 @@ textarea:focus-visible {
 }
 
 .task-view-badges-col > div,
-.task-view-dates-col > div {
+.task-view-dates-col > div,
+.suggestion-reason > div {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1038,7 +1056,9 @@ textarea:focus-visible {
 }
 
 .task-view-badges-col dt,
-.task-view-dates-col dt {
+.task-view-dates-col dt,
+.suggestion-reason dt
+{
   color: var(--color-muted);
   font-size: 0.75rem;
   font-weight: 600;
@@ -1046,7 +1066,8 @@ textarea:focus-visible {
   letter-spacing: 0.03em;
 }
 
-.task-view-badges-col dd {
+.task-view-badges-col dd,
+.suggestion-reason dd{
   margin: 0;
 }
 

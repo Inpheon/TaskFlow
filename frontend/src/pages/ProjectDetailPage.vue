@@ -3,7 +3,8 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { ArrowLeft, FolderKanban, Plus, RefreshCw, SquarePen, Trash2 } from "@lucide/vue";
 import { RouterLink, useRoute } from "vue-router";
 import { getProject } from "@/api/projects";
-import { createNote, createTask, deleteNote, deleteTask, getNotes, getProjectReport, getProjectSummary, getTask, listTasks, moveTask, projectBoard, updateTask } from "@/api/tasks";
+import { createNote, createTask, deleteNote, deleteTask, getNotes, getProjectReport, getProjectSummary,
+  getSuggestedTask, getTask, listTasks, moveTask, projectBoard, updateTask } from "@/api/tasks";
 import Knob from "primevue/knob";
 import DatePicker from "primevue/datepicker";
 import { ApiClientError } from "@/api/http";
@@ -12,7 +13,8 @@ import BaseDialog from "@/components/BaseDialog.vue";
 import FormField from "@/components/FormField.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import StatePanel from "@/components/StatePanel.vue";
-import type { BoardResponse, CreateTaskRequest, Project, ProjectReportResponse, ProjectStatsResponse, TaskNoteResponse, TaskPriority, TaskResponse, TaskStatus } from "@/types/api";
+import type { BoardResponse, CreateTaskRequest, Project, ProjectReportResponse, ProjectStatsResponse,
+  SuggestedTaskReason, SuggestedTaskResponse, TaskNoteResponse, TaskPriority, TaskResponse, TaskStatus } from "@/types/api";
 
 const STATUSES: TaskStatus[] = ["TODO", "IN_PROGRESS", "DONE"];
 const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -26,6 +28,12 @@ const PRIORITY_LABELS: Record<TaskPriority, string> = {
   MEDIUM: "Medium",
   HIGH: "High",
 };
+const REASON_LABELS: Record<SuggestedTaskReason, string> = {
+  OVERDUE: "Overdue",
+  NEAREST_DUE_DATE: "Nearest due date",
+  HIGH_PRIORITY: "High priority",
+  OLDEST_OPEN_TASK: "Oldest open task",
+};
 
 interface DragState { task: TaskResponse; fromStatus: TaskStatus }
 interface DropTarget { status: TaskStatus; index: number }
@@ -38,6 +46,9 @@ const projectStats = ref<ProjectStatsResponse | null>(null);
 const viewingReport = ref<ProjectReportResponse | null>(null);
 const reportLoading = ref(false);
 const reportError = ref<string | null>(null);
+const suggestedTask = ref<SuggestedTaskResponse | null>(null);
+const suggestionLoading = ref(false);
+const suggestionError = ref<string | null>(null);
 const loading = ref(true);
 const formLoading = ref(false);
 const pendingDelete = ref<{ id: string; index: number; name: string } | null>(null);
@@ -138,6 +149,22 @@ async function openReport() {
       : "Unable to load the report";
   } finally {
     reportLoading.value = false;
+  }
+}
+
+async function openSuggestion() {
+  if (!project.value) return;
+  suggestionLoading.value = true;
+  suggestionError.value = null;
+  suggestedTask.value = null;
+  try {
+    suggestedTask.value = await getSuggestedTask(project.value.id);
+  } catch (caught) {
+    suggestionError.value = caught instanceof ApiClientError
+      ? caught.message
+      : "Unable to load suggestion";
+  } finally {
+    suggestionLoading.value = false;
   }
 }
 
@@ -339,6 +366,8 @@ async function promptView(taskId: string) {
   newNoteContent.value = "";
   notesError.value = null;
   viewingTaskNotes.value = [];
+  suggestedTask.value = null;
+  suggestionError.value = null;
   try {
     viewingTask.value = await getTask(taskId);
   } catch (caught) {
@@ -483,13 +512,18 @@ function formatDate(value: string) {
 
       <section class="project-workspace">
         <header>
-          <span class="project-workspace-icon">
-            <FolderKanban :size="22" aria-hidden="true" />
-          </span>
-          <div>
-            <h2>Project workspace</h2>
-            <p class="project-updated">Drag tasks between categories to change their status</p>
+          <div class="project-workspace-header-left">
+            <span class="project-workspace-icon">
+              <FolderKanban :size="22" aria-hidden="true" />
+            </span>
+            <div>
+              <h2>Project workspace</h2>
+              <p class="project-updated">Drag tasks between categories to change their status</p>
+            </div>
           </div>
+          <BaseButton :disabled="suggestionLoading" @click="openSuggestion">
+            {{ suggestionLoading ? "Loading…" : "Suggest Next Task" }}
+          </BaseButton>
         </header>
 
         <div v-if="board?.columns" class="board">
@@ -765,6 +799,44 @@ function formatDate(value: string) {
       <div class="dialog-footer">
         <BaseButton @click="pendingDelete = null">Cancel</BaseButton>
         <BaseButton variant="danger" @click="confirmDelete">Delete</BaseButton>
+      </div>
+    </BaseDialog>
+
+    <BaseDialog
+      v-if="suggestedTask || suggestionLoading || suggestionError"
+      title="Suggested Next Task"
+      @close="suggestedTask = null; suggestionError = null"
+    >
+      <div class="dialog-body">
+        <div v-if="suggestionLoading" class="report-loading">
+          <div class="spinner" />
+        </div>
+        <p v-else-if="suggestionError" class="form-error" role="alert">{{ suggestionError }}</p>
+        <div v-else-if="suggestedTask">
+          <dl class="suggestion-reason">
+            <div>
+              <dt>Reason</dt>
+              <dd>{{ REASON_LABELS[suggestedTask.reason] }}</dd>
+            </div>
+          </dl>
+          <div
+            class="task-card"
+            :class="`priority-${suggestedTask.task.priority.toLowerCase()}`"
+            @click="promptView(suggestedTask.task.id)"
+          >
+            <span class="task-priority">{{ PRIORITY_LABELS[suggestedTask.task.priority] }}</span>
+            <p class="task-title">{{ suggestedTask.task.title }}</p>
+            <div class="task-card-meta">
+              <span class="task-tag" :class="`status-${suggestedTask.task.status.toLowerCase()}`">
+                {{ STATUS_LABELS[suggestedTask.task.status] }}
+              </span>
+              <span class="task-due">Due {{ formatDate(suggestedTask.task.dueDate) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <BaseButton @click="suggestedTask = null; suggestionError = null">Close</BaseButton>
       </div>
     </BaseDialog>
 

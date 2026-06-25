@@ -2,7 +2,7 @@ import { request } from "./http";
 import {
   BoardResponse,
   CreateTaskRequest,
-  MoveTaskRequest, ProjectReportResponse, ProjectStatsResponse,
+  MoveTaskRequest, ProjectReportResponse, ProjectStatsResponse, SuggestedTaskResponse,
   TaskNoteResponse,
   TaskResponse
 } from "@/types/api";
@@ -69,4 +69,8 @@ export function getProjectSummary(projectId: string): Promise<ProjectStatsRespon
 
 export function getProjectReport(projectId: string): Promise<ProjectReportResponse> {
   return request<ProjectReportResponse>(`/api/projects/${projectId}/report`);
+}
+
+export function getSuggestedTask(projectId: string): Promise<SuggestedTaskResponse> {
+  return request<SuggestedTaskResponse>(`/api/projects/${projectId}/suggested-next-task`);
 }
