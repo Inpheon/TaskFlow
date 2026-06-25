@@ -1,5 +1,11 @@
 import { request } from "./http";
-import {BoardResponse, CreateTaskRequest, MoveTaskRequest, TaskNoteResponse, TaskResponse} from "@/types/api";
+import {
+  BoardResponse,
+  CreateTaskRequest,
+  MoveTaskRequest, ProjectReportResponse, ProjectStatsResponse,
+  TaskNoteResponse,
+  TaskResponse
+} from "@/types/api";
 
 export function projectBoard(projectId: string): Promise<BoardResponse> {
   return request<BoardResponse>(`/api/projects/${projectId}/board`);
@@ -55,4 +61,12 @@ export function deleteNote(noteId: string): Promise<void> {
   return request<void>(`/api/notes/${noteId}`, {
     method: "DELETE",
   });
+}
+
+export function getProjectSummary(projectId: string): Promise<ProjectStatsResponse> {
+  return request<ProjectStatsResponse>(`/api/projects/${projectId}/stats`);
+}
+
+export function getProjectReport(projectId: string): Promise<ProjectReportResponse> {
+  return request<ProjectReportResponse>(`/api/projects/${projectId}/report`);
 }

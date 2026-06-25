@@ -101,3 +101,32 @@ export interface DashboardSummaryResponse {
   overdueTasksCount: number;
   highPriorityOpenTasksCount: number;
 }
+
+export interface SuggestedTaskSummary {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate: string; // datetime
+}
+
+export interface ProjectStatsResponse {
+  totalTasks: number;
+  todo: number;
+  inProgress: number;
+  done: number;
+  completionPercentage: number;
+}
+
+export interface ProjectReportResponse {
+  projectId: string;
+  projectName: string;
+  generatedAt: string;
+  totalTasks: number;
+  doneTasks: number;
+  inProgressTasks: number;
+  todoTasks: number;
+  completionPercentage: number;
+  overdueTasks: number;
+  highPriorityOpenTasks: number;
+}

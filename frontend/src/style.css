@@ -347,11 +347,34 @@ textarea:focus-visible {
   gap: 14px;
 }
 
+.stats-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .stats-heading {
   margin: 0;
   color: var(--color-heading);
   font-size: 1.05rem;
   font-weight: 720;
+}
+
+.report-loading {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.report-meta {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+}
+
+.report-stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 }
 
 .stats-grid {

@@ -3,14 +3,14 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { ArrowLeft, FolderKanban, Plus, RefreshCw, SquarePen, Trash2 } from "@lucide/vue";
 import { RouterLink, useRoute } from "vue-router";
 import { getProject } from "@/api/projects";
-import { createNote, createTask, deleteNote, deleteTask, getNotes, getTask, listTasks, moveTask, projectBoard, updateTask } from "@/api/tasks";
+import { createNote, createTask, deleteNote, deleteTask, getNotes, getProjectReport, getProjectSummary, getTask, listTasks, moveTask, projectBoard, updateTask } from "@/api/tasks";
 import { ApiClientError } from "@/api/http";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseDialog from "@/components/BaseDialog.vue";
 import FormField from "@/components/FormField.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import StatePanel from "@/components/StatePanel.vue";
-import type { BoardResponse, CreateTaskRequest, Project, TaskNoteResponse, TaskPriority, TaskResponse, TaskStatus } from "@/types/api";
+import type { BoardResponse, CreateTaskRequest, Project, ProjectReportResponse, ProjectStatsResponse, TaskNoteResponse, TaskPriority, TaskResponse, TaskStatus } from "@/types/api";
 
 const STATUSES: TaskStatus[] = ["TODO", "IN_PROGRESS", "DONE"];
 const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -32,6 +32,10 @@ const route = useRoute();
 const project = ref<Project | null>(null);
 const board = ref<BoardResponse | null>(null);
 const tasks = ref<TaskResponse[]>([]);
+const projectStats = ref<ProjectStatsResponse | null>(null);
+const viewingReport = ref<ProjectReportResponse | null>(null);
+const reportLoading = ref(false);
+const reportError = ref<string | null>(null);
 const loading = ref(true);
 const formLoading = ref(false);
 const pendingDelete = ref<{ id: string; index: number; name: string } | null>(null);
@@ -70,10 +74,11 @@ async function loadProject() {
   error.value = null;
   const id = String(route.params.projectId);
   try {
-    [project.value, board.value, tasks.value] = await Promise.all([
+    [project.value, board.value, tasks.value, projectStats.value] = await Promise.all([
       getProject(id),
       projectBoard(id),
       listTasks(id),
+      getProjectSummary(id),
     ]);
   } catch (caught) {
     error.value = caught instanceof ApiClientError
@@ -91,6 +96,30 @@ async function refreshWorkspace() {
     error.value = caught instanceof ApiClientError
       ? caught.message
       : "Unable to refresh the project workspace";
+  }
+}
+
+async function refreshStats() {
+  try {
+    if (project.value) projectStats.value = await getProjectSummary(project.value.id);
+  } catch {
+    // stats are non-critical, fail silently
+  }
+}
+
+async function openReport() {
+  if (!project.value) return;
+  reportLoading.value = true;
+  reportError.value = null;
+  viewingReport.value = null;
+  try {
+    viewingReport.value = await getProjectReport(project.value.id);
+  } catch (caught) {
+    reportError.value = caught instanceof ApiClientError
+      ? caught.message
+      : "Unable to load the report";
+  } finally {
+    reportLoading.value = false;
   }
 }
 
@@ -142,7 +171,7 @@ async function submit() {
     };
     const task = await createTask(project.value.id, payload);
     tasks.value.push(task);
-    await refreshWorkspace();
+    await Promise.all([refreshWorkspace(), refreshStats()]);
     pendingAdd.value = false;
   } catch (caught) {
     dialogError.value = caught instanceof ApiClientError
@@ -165,7 +194,7 @@ async function submitEdit() {
       dueDate: form.dueDate,
     };
     tasks.value[pendingEdit.value.index] = await updateTask(pendingEdit.value.id, payload);
-    await refreshWorkspace();
+    await Promise.all([refreshWorkspace(), refreshStats()]);
     pendingEdit.value = null;
   } catch (caught) {
     dialogError.value = caught instanceof ApiClientError
@@ -186,7 +215,7 @@ async function removeTask(taskId: string, index: number) {
   try {
     await deleteTask(taskId);
     tasks.value.splice(index, 1);
-    await refreshWorkspace();
+    await Promise.all([refreshWorkspace(), refreshStats()]);
   } catch (caught) {
     dialogError.value = caught instanceof ApiClientError
       ? caught.message
@@ -273,8 +302,7 @@ async function onDrop(status: TaskStatus) {
 
   try {
     await moveTask(task.id, { targetStatus: status, position });
-    await refreshWorkspace();
-    await refreshTaskList();
+    await Promise.all([refreshWorkspace(), refreshTaskList(), refreshStats()]);
   } catch (caught) {
     error.value = caught instanceof ApiClientError
       ? caught.message
@@ -386,6 +414,37 @@ function formatDate(value: string) {
       />
 
       <p class="project-updated">Updated {{ formatDate(project.updatedAt) }}</p>
+
+      <section v-if="projectStats" class="stats-section">
+        <div class="stats-section-header">
+          <h2 class="stats-heading">Statistics</h2>
+          <BaseButton @click="openReport" :disabled="reportLoading">
+            {{ reportLoading ? "Loading…" : "See Detailed Report" }}
+          </BaseButton>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-value">{{ projectStats.totalTasks }}</span>
+            <span class="stat-label">Total tasks</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value">{{ projectStats.todo }}</span>
+            <span class="stat-label">To Do</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value">{{ projectStats.inProgress }}</span>
+            <span class="stat-label">In Progress</span>
+          </div>
+          <div class="stat-card" :class="{ 'stat-card--completed': projectStats.done > 0 }">
+            <span class="stat-value">{{ projectStats.done }}</span>
+            <span class="stat-label">Done</span>
+          </div>
+          <div class="stat-card" :class="{ 'stat-card--completed': projectStats.completionPercentage > 0 }">
+            <span class="stat-value">{{ projectStats.completionPercentage }}%</span>
+            <span class="stat-label">Completed</span>
+          </div>
+        </div>
+      </section>
 
       <section class="project-workspace">
         <header>
@@ -662,6 +721,57 @@ function formatDate(value: string) {
       <div class="dialog-footer">
         <BaseButton @click="pendingDelete = null">Cancel</BaseButton>
         <BaseButton variant="danger" @click="confirmDelete">Delete</BaseButton>
+      </div>
+    </BaseDialog>
+
+    <BaseDialog
+      v-if="viewingReport || reportLoading || reportError"
+      title="Project Report"
+      @close="viewingReport = null; reportError = null"
+    >
+      <div class="dialog-body">
+        <div v-if="reportLoading" class="report-loading">
+          <div class="spinner" />
+        </div>
+        <p v-else-if="reportError" class="form-error" role="alert">{{ reportError }}</p>
+        <template v-else-if="viewingReport">
+          <p class="report-meta">
+            Generated {{ formatDate(viewingReport.generatedAt) }}
+          </p>
+          <div class="stats-grid report-stats-grid">
+            <div class="stat-card">
+              <span class="stat-value">{{ viewingReport.totalTasks }}</span>
+              <span class="stat-label">Total tasks</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value">{{ viewingReport.todoTasks }}</span>
+              <span class="stat-label">To Do</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value">{{ viewingReport.inProgressTasks }}</span>
+              <span class="stat-label">In Progress</span>
+            </div>
+            <div class="stat-card" :class="{ 'stat-card--completed': viewingReport.doneTasks > 0 }">
+              <span class="stat-value">{{ viewingReport.doneTasks }}</span>
+              <span class="stat-label">Done</span>
+            </div>
+            <div class="stat-card" :class="{ 'stat-card--completed': viewingReport.completionPercentage > 0 }">
+              <span class="stat-value">{{ viewingReport.completionPercentage }}%</span>
+              <span class="stat-label">Completed</span>
+            </div>
+            <div class="stat-card" :class="{ 'stat-card--danger': viewingReport.overdueTasks > 0 }">
+              <span class="stat-value">{{ viewingReport.overdueTasks }}</span>
+              <span class="stat-label">Overdue</span>
+            </div>
+            <div class="stat-card" :class="{ 'stat-card--danger': viewingReport.highPriorityOpenTasks > 0 }">
+              <span class="stat-value">{{ viewingReport.highPriorityOpenTasks }}</span>
+              <span class="stat-label">High priority</span>
+            </div>
+          </div>
+        </template>
+      </div>
+      <div class="dialog-footer">
+        <BaseButton @click="viewingReport = null; reportError = null">Close</BaseButton>
       </div>
     </BaseDialog>
   </section>
