@@ -93,3 +93,11 @@ export interface TaskNoteResponse {
   content: string;
   createdAt: string; // datetime
 }
+
+export interface DashboardSummaryResponse {
+  projectsCount: number;
+  openTasksCount: number;
+  doneTasksCount: number;
+  overdueTasksCount: number;
+  highPriorityOpenTasksCount: number;
+}
