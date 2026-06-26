@@ -1,8 +1,12 @@
 import { request } from "./http";
-import type { Project, ProjectRequest } from "@/types/api";
+import {DashboardSummaryResponse, Project, ProjectRequest} from "@/types/api";
 
 export function listProjects(): Promise<Project[]> {
   return request<Project[]>("/api/projects");
+}
+
+export function getDashboardSummary(): Promise<DashboardSummaryResponse> {
+  return request<DashboardSummaryResponse>("/api/dashboard/summary");
 }
 
 export function getProject(projectId: string): Promise<Project> {

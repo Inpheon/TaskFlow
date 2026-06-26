@@ -93,3 +93,47 @@ export interface TaskNoteResponse {
   content: string;
   createdAt: string; // datetime
 }
+
+export interface DashboardSummaryResponse {
+  projectsCount: number;
+  openTasksCount: number;
+  doneTasksCount: number;
+  overdueTasksCount: number;
+  highPriorityOpenTasksCount: number;
+}
+
+export interface SuggestedTaskSummary {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate: string; // datetime
+}
+
+export type SuggestedTaskReason = "OVERDUE" | "NEAREST_DUE_DATE" | "HIGH_PRIORITY" | "OLDEST_OPEN_TASK";
+
+export interface SuggestedTaskResponse {
+  task: SuggestedTaskSummary;
+  reason: SuggestedTaskReason;
+}
+
+export interface ProjectStatsResponse {
+  totalTasks: number;
+  todo: number;
+  inProgress: number;
+  done: number;
+  completionPercentage: number;
+}
+
+export interface ProjectReportResponse {
+  projectId: string;
+  projectName: string;
+  generatedAt: string;
+  totalTasks: number;
+  doneTasks: number;
+  inProgressTasks: number;
+  todoTasks: number;
+  completionPercentage: number;
+  overdueTasks: number;
+  highPriorityOpenTasks: number;
+}

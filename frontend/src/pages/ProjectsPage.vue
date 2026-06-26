@@ -2,17 +2,18 @@
 import {computed, onMounted, reactive, ref} from "vue";
 import {FolderKanban, Plus, RefreshCw, SquarePen, Trash2} from "@lucide/vue";
 import {useRouter} from "vue-router";
-import {createProject, deleteProject, getProject, listProjects, updateProject} from "@/api/projects";
+import {createProject, deleteProject, getDashboardSummary, getProject, listProjects, updateProject} from "@/api/projects";
 import {ApiClientError} from "@/api/http";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseDialog from "@/components/BaseDialog.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import StatePanel from "@/components/StatePanel.vue";
-import type {Project} from "@/types/api";
+import type {DashboardSummaryResponse, Project} from "@/types/api";
 import FormField from "@/components/FormField.vue";
 
 const router = useRouter();
 const projects = ref<Project[]>([]);
+const summary = ref<DashboardSummaryResponse | null>(null);
 const loading = ref(true);
 const loadError = ref<string | null>(null);
 const pendingDelete = ref<{ id: string; index: number; name: string } | null>(null);
@@ -36,7 +37,10 @@ async function loadProjects() {
   loading.value = true;
   loadError.value = null;
   try {
-    projects.value = await listProjects();
+    [projects.value, summary.value] = await Promise.all([
+      listProjects(),
+      getDashboardSummary(),
+    ]);
   } catch (error) {
     loadError.value = error instanceof ApiClientError
       ? error.message
@@ -73,6 +77,7 @@ async function removeProject(projectId: string, index: number) {
   try {
     await deleteProject(projectId);
     projects.value.splice(index, 1)
+    summary.value = await getDashboardSummary();
   } catch (error) {
     loadError.value = error instanceof ApiClientError
       ? error.message
@@ -119,6 +124,7 @@ async function submit() {
       description: form.description
     });
     projects.value.push(newProject);
+    summary.value = await getDashboardSummary();
   } catch (error) {
     loadError.value = error instanceof ApiClientError
       ? error.message
@@ -143,6 +149,32 @@ function formatDate(value: string) {
       title="Projects"
       description="Organize related tasks and follow their progress."
     />
+
+    <section v-if="summary" class="stats-section">
+      <h2 class="stats-heading">Statistics</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-value">{{ summary.projectsCount }}</span>
+          <span class="stat-label">Projects</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value">{{ summary.openTasksCount }}</span>
+          <span class="stat-label">Open tasks</span>
+        </div>
+        <div class="stat-card" :class="{ 'stat-card--completed': summary.doneTasksCount > 0 }">
+          <span class="stat-value">{{ summary.doneTasksCount }}</span>
+          <span class="stat-label">Completed</span>
+        </div>
+        <div class="stat-card" :class="{ 'stat-card--danger': summary.overdueTasksCount > 0 }">
+          <span class="stat-value">{{ summary.overdueTasksCount }}</span>
+          <span class="stat-label">Overdue</span>
+        </div>
+        <div class="stat-card" :class="{ 'stat-card--danger': summary.highPriorityOpenTasksCount > 0 }">
+          <span class="stat-value">{{ summary.highPriorityOpenTasksCount }}</span>
+          <span class="stat-label">High priority</span>
+        </div>
+      </div>
+    </section>
 
     <StatePanel
       v-if="loading"

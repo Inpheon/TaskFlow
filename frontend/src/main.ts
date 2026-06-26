@@ -1,5 +1,7 @@
 import { createApp } from "vue";
 import { createPinia } from "pinia";
+import PrimeVue from "primevue/config";
+import Aura from '@primeuix/themes/aura';
 import App from "./App.vue";
 import { configureHttpAuth } from "./api/http";
 import { createAppRouter } from "./router";
@@ -13,6 +15,12 @@ async function bootstrap() {
   const auth = useAuthStore(pinia);
 
   app.use(pinia);
+  app.use(PrimeVue, {
+    theme: {
+      preset: Aura,
+      options: { darkModeSelector: false },
+    },
+  });
 
   configureHttpAuth(
     () => auth.accessToken,
