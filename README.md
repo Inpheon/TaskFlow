@@ -1,13 +1,19 @@
 # TaskFlow
 
-## Wymagania
+TaskFlow porządkuje projekty, zadania i notatki w jednym miejscu. Tablica kanban, terminy, priorytety, statystyki i sugestia kolejnego zadania ułatwiają ocenę postępu oraz wybór pracy wymagającej uwagi.
 
-- Docker + Docker Compose
-- Java 21
-- Node.js 22
-- npm
+## Architektura
 
-## Uruchomienie całego środowiska
+- Vue 3 SPA udostępniane przez Nginx
+- REST API w Spring Boot
+- PostgreSQL z migracjami Flyway
+- Docker Compose uruchamiający bazę, backend i frontend
+
+Nginx udostępnia pliki frontendu, obsługuje routing SPA i przekazuje żądania `/api` do backendu. Backend jest modularnym monolitem i odpowiada za uwierzytelnianie, uprawnienia oraz reguły domenowe.
+
+## Uruchomienie
+
+Wymagane są Docker i Docker Compose.
 
 ```bash
 docker compose up --build
@@ -15,30 +21,38 @@ docker compose up --build
 
 Adresy:
 
-- frontend: http://localhost:5173
-- backend health: http://localhost:8080/api/health
+- aplikacja: http://localhost:5173
+- kontrola stanu backendu: http://localhost:8080/api/health
 - Swagger UI: http://localhost:8080/swagger-ui/index.html
 
-Dane demo dla lokalnego profilu Docker Compose:
+Konto demonstracyjne:
 
-- email: `demo@taskflow.local`
+- e-mail: `demo@taskflow.local`
 - hasło: `demo1234`
 
-Zatrzymanie:
+Zatrzymanie aplikacji:
 
 ```bash
 docker compose down
 ```
 
-## Development
+## Praca lokalna
 
-Backend:
+Wymagane są Java 21, Node.js 22, npm oraz Docker.
+
+Uruchomienie bazy:
+
+```bash
+docker compose up -d db
+```
+
+Uruchomienie backendu:
 
 ```bash
 ./gradlew :backend:bootRun
 ```
 
-Frontend:
+Uruchomienie frontendu:
 
 ```bash
 cd frontend
@@ -46,15 +60,15 @@ npm install
 npm run dev
 ```
 
-## Testy
+## Weryfikacja
 
-Backend:
+Testy backendu wymagają działającego Docker Engine:
 
 ```bash
 ./gradlew :backend:test
 ```
 
-Frontend:
+Sprawdzenie typów i zbudowanie frontendu:
 
 ```bash
 cd frontend
@@ -62,6 +76,6 @@ npm install
 npm run build
 ```
 
-## Kontrakt API
+## API
 
-Roboczy kontrakt API znajduje sie w [docs/api-contract.md](docs/api-contract.md).
+Aktualną specyfikację OpenAPI udostępnia Swagger UI. Pomocniczy, rozwijany wraz z projektem opis znajduje się w [docs/api-contract.md](docs/api-contract.md).
