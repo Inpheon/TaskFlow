@@ -11,6 +11,8 @@ TaskFlow porządkuje projekty, zadania i notatki w jednym miejscu. Tablica kanba
 
 Nginx udostępnia pliki frontendu, obsługuje routing SPA i przekazuje żądania `/api` do backendu. Backend jest modularnym monolitem i odpowiada za uwierzytelnianie, uprawnienia oraz reguły domenowe.
 
+Decyzje architektoniczne opisuje [ADR](docs/ADR.md). Ich skrócone zestawienie znajduje się w [matrycy ADR](docs/TaskFlow_ADR.xlsx).
+
 ## Uruchomienie
 
 Wymagane są Docker i Docker Compose.
